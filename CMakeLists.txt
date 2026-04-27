@@ -364,11 +364,46 @@ add_tesseract_nanobind_extension(
   tesseract::tesseract_common
 )
 
+# Optional ROS 2 bindings (tesseract_ros2_monitoring). Off by default so the
+# published wheel stays ROS-free. Enable with -DTESSERACT_NANOBIND_BUILD_ROS=ON
+# in a shell that has sourced a ROS 2 distro (e.g. /opt/ros/jazzy/setup.bash).
+option(TESSERACT_NANOBIND_BUILD_ROS
+       "Build ROS 2 bindings (tesseract_ros2_monitoring). Requires a sourced ROS 2 environment."
+       OFF)
+
+if(TESSERACT_NANOBIND_BUILD_ROS)
+  find_package(ament_cmake REQUIRED)
+  find_package(rclcpp REQUIRED)
+  find_package(tesseract_msgs REQUIRED)
+  find_package(tesseract_rosutils REQUIRED)
+  find_package(tesseract_monitoring REQUIRED)
+  message(STATUS "Building tesseract_ros2_monitoring against rclcpp ${rclcpp_VERSION}")
+
+  # tesseract_msgs generated headers (e.g. tesseract_msgs/msg/environment_state.hpp)
+  # reach the binding transitively via
+  # tesseract_monitoring::tesseract_monitoring_environment's
+  # INTERFACE_INCLUDE_DIRECTORIES. We do NOT call ament_target_dependencies
+  # here because that uses the plain target_link_libraries signature, which
+  # collides with nanobind's keyword (PRIVATE) form that
+  # add_tesseract_nanobind_extension already uses on the same target.
+  add_tesseract_nanobind_extension(
+    tesseract_ros2_monitoring
+    src/tesseract_ros2_monitoring/tesseract_ros2_monitoring_bindings.cpp
+    tesseract_monitoring::tesseract_monitoring_environment
+    tesseract::tesseract_environment
+    tesseract::tesseract_scene_graph
+    tesseract::tesseract_common
+    rclcpp::rclcpp
+    ${tesseract_msgs_TARGETS}
+  )
+endif()
+
 message(STATUS "============= Build Configuration =============")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ Standard: C++${CMAKE_CXX_STANDARD}")
 message(STATUS "Python: ${Python_VERSION}")
 message(STATUS "nanobind: ${nanobind_VERSION}")
+message(STATUS "ROS 2 bindings: ${TESSERACT_NANOBIND_BUILD_ROS}")
 message(STATUS "===============================================")
 
 # ============== Install Bundled Data Files ==============

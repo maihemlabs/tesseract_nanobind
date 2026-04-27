@@ -1,0 +1,9 @@
+# Pinned to the 0.34.0 tag, which uses per-package CMake projects to match
+# our `tesseract` 0.34.x pin. tesseract_ros2 master/HEAD was rewritten to
+# consume the consolidated single-CMake-project form introduced in tesseract
+# 0.35.0; bumping past 0.34.0 here would require bumping the entire
+# tesseract core pin, which is out of scope for this PR.
+- git:
+    local-name: tesseract_ros2
+    uri: https://github.com/tesseract-robotics/tesseract_ros2.git
+    version: 0.34.0

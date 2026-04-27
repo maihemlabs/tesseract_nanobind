@@ -10,8 +10,17 @@
 # Usage:
 #   pixi run build-cpp          # recommended
 #   zsh scripts/build_tesseract_cpp.sh  # direct (requires pixi env active)
+#   zsh scripts/build_tesseract_cpp.sh --with-ros  # also build tesseract_ros2 packages
 
 set -e  # Exit on error
+
+WITH_ROS=0
+for arg in "$@"; do
+    case "$arg" in
+        --with-ros) WITH_ROS=1 ;;
+        *) echo "Unknown argument: $arg"; exit 1 ;;
+    esac
+done
 
 # Get project root (parent of scripts/)
 SCRIPT_DIR="${0:a:h}"  # zsh way to get script directory
@@ -71,6 +80,16 @@ if [ ! -f "$PROJECT_ROOT/dependencies.rosinstall" ]; then
 fi
 cp "$PROJECT_ROOT/dependencies.rosinstall" "$WORKSPACE_DIR/src/"
 
+if [[ $WITH_ROS -eq 1 ]]; then
+    if [[ -z "$AMENT_PREFIX_PATH" ]]; then
+        echo "❌ --with-ros requires a sourced ROS 2 environment."
+        echo "   Run: source /opt/ros/<distro>/setup.bash"
+        exit 1
+    fi
+    echo "✓ ROS 2 environment detected: $AMENT_PREFIX_PATH"
+    cp "$PROJECT_ROOT/dependencies_ros.rosinstall" "$WORKSPACE_DIR/src/"
+fi
+
 # Import dependencies using vcstool
 echo ""
 echo "=========================================="
@@ -80,6 +99,11 @@ cd "$WORKSPACE_DIR/src"
 
 echo "Running: vcs import --shallow --input dependencies.rosinstall"
 vcs import --shallow --input dependencies.rosinstall
+
+if [[ $WITH_ROS -eq 1 ]]; then
+    echo "Running: vcs import --shallow --input dependencies_ros.rosinstall"
+    vcs import --shallow --input dependencies_ros.rosinstall
+fi
 
 echo ""
 echo "Workspace contents:"
@@ -160,9 +184,24 @@ export LIBRARY_PATH=$CONDA_PREFIX/lib:$LIBRARY_PATH
 echo "LIBRARY_PATH: $LIBRARY_PATH"
 echo ""
 
+# Packages to skip regardless. When --with-ros is set we still skip the
+# Qt/Ogre-heavy and example packages inside tesseract_ros2, keeping only
+# tesseract_msgs, tesseract_rosutils, and tesseract_monitoring.
+PACKAGES_IGNORE=(
+    tesseract_examples tesseract_python vhacd qpoases tesseract_nanobind
+    tesseract_viewer_python twc_application twc_motion_planning twc_msgs
+    twc_support
+)
+if [[ $WITH_ROS -eq 1 ]]; then
+    PACKAGES_IGNORE+=(
+        tesseract_rviz tesseract_qt_ros tesseract_planning_server
+        tesseract_ros_examples
+    )
+fi
+
 colcon build \
     --merge-install \
-    --packages-ignore tesseract_examples tesseract_python vhacd qpoases tesseract_nanobind tesseract_viewer_python twc_application twc_motion_planning twc_msgs twc_support \
+    --packages-ignore "${PACKAGES_IGNORE[@]}" \
     --event-handlers console_cohesion+ \
     --cmake-force-configure \
     --cmake-args \

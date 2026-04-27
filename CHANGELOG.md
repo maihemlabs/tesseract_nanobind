@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `CompositeInstruction.push_back` now accepts a `CompositeInstruction` in addition to a plain `Instruction`, enabling nested composites (e.g. raster programs) to be built from Python the same way they are in C++ ([#51], [6d17314]).
   - contributed by [@Joelkang]
+- **`tesseract_ros2_monitoring` bindings** (opt-in via `-DTESSERACT_NANOBIND_BUILD_ROS=ON`) — wraps the `tesseract_monitoring` package from [`tesseract_ros2`][tesseract_ros2]. Exposes the abstract `EnvironmentMonitor` base, the concrete `ROSEnvironmentMonitor`, `CurrentStateMonitor`, `MonitoredEnvironmentMode`, and a `ROSContext` helper that owns `rclcpp::init`/`shutdown` plus a user-facing `rclcpp::Node` spun on a background executor. Default wheels remain ROS-free; ROS 2 users build locally in a shell that has sourced `/opt/ros/<distro>/setup.bash`. Module is prefixed `tesseract_ros2_` to allow a future `tesseract_ros_monitoring` (ROS 1) to coexist without a breaking rename.
 
 ### In progress
 
@@ -53,6 +54,7 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [0.34.1.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.1...0.34.1.2
 [0.34.1.1]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.0...0.34.1.1
 [tesseract-planning]: https://github.com/tesseract-robotics/tesseract_planning
+[tesseract_ros2]: https://github.com/tesseract-robotics/tesseract_ros2
 [#40]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/40
 [#48]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/48
 [#49]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/49

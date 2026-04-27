@@ -165,6 +165,8 @@ nav:
     - SQP Modules:
       - tesseract_robotics.trajopt_ifopt: api/trajopt_ifopt.md
       - tesseract_robotics.trajopt_sqp: api/trajopt_sqp.md
+    - ROS 2 Modules (optional):
+      - tesseract_robotics.tesseract_ros2_monitoring: api/tesseract_ros2_monitoring.md
   - Changes:
     - "0.33 → 0.34": changes.md
   - Developer:

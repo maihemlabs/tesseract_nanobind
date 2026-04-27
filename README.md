@@ -159,6 +159,39 @@ This runs ruff + auto-staging on commit, and pyright + pytest on push (configure
 └── docs/                     # mkdocs-material documentation
 ```
 
+### Optional ROS 2 bindings
+
+The `tesseract_ros2_monitoring` submodule (wrapping the `tesseract_monitoring` package from [`tesseract_ros2`](https://github.com/tesseract-robotics/tesseract_ros2)) is gated behind `-DTESSERACT_NANOBIND_BUILD_ROS=ON` and is **off by default**. Default wheels remain ROS-free.
+
+To build the ROS 2 bindings locally:
+
+```bash
+# Enter pixi env first (provides cmake/colcon/vcs/boost), then source ROS on
+# top so its CMAKE_PREFIX_PATH/AMENT_PREFIX_PATH come through.
+pixi shell
+source /opt/ros/jazzy/setup.bash
+
+# rosidl message generators + ament_cmake helpers are invoked with pixi's
+# Python, but ROS Jazzy expects them to find a few packages from the system
+# site-packages (which pixi's Python doesn't see). Install them in the pixi
+# env. Pin empy to 3.x — empy 4.x has breaking template-engine changes that
+# ROS Jazzy's rosidl generators do not handle.
+pip install lark catkin_pkg ament_package 'empy==3.3.4'
+
+./scripts/build_tesseract_cpp.sh --with-ros            # pulls dependencies_ros.rosinstall + colcon-builds
+source ws/install/setup.bash
+
+# `--no-build-isolation` is required so the build sees the ROS Python
+# packages we just pip-installed into the pixi env (pip otherwise spawns
+# a temporary isolated venv that only has [build-system].requires).
+pip install -e . --no-build-isolation \
+    --config-settings=cmake.define.TESSERACT_NANOBIND_BUILD_ROS=ON
+
+pytest tests/tesseract_ros2_monitoring
+```
+
+ROS-less builds automatically skip the submodule's tests via `pytest.importorskip`. Tested against ROS 2 Jazzy.
+
 ### Building portable wheels
 
 Editable installs bake absolute paths — not portable. For distributable wheels:
