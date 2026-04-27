@@ -13,6 +13,8 @@ NB_MAKE_OPAQUE(VectorIsometry3d)
 #include <tesseract_common/manipulator_info.h>
 #include <tesseract_common/joint_state.h>
 #include <tesseract_common/collision_margin_data.h>
+#include <boost/uuid/uuid.hpp>
+#include <cstring>
 #include <tesseract_common/allowed_collision_matrix.h>
 #include <tesseract_common/kinematic_limits.h>
 #include <tesseract_common/plugin_info.h>
@@ -203,6 +205,31 @@ NB_MODULE(_tesseract_common, m) {
         .def_rw("acceleration", &tesseract_common::JointState::acceleration)
         .def_rw("effort", &tesseract_common::JointState::effort)
         .def_rw("time", &tesseract_common::JointState::time);
+
+    // ========== JointTrajectory ==========
+    nb::class_<tesseract_common::JointTrajectory>(m, "JointTrajectory")
+        .def(nb::init<std::string>(), "description"_a = "")
+        .def(nb::init<std::vector<tesseract_common::JointState>, std::string>(),
+             "states"_a, "description"_a = "")
+        .def_rw("states", &tesseract_common::JointTrajectory::states)
+        .def_rw("description", &tesseract_common::JointTrajectory::description)
+        // uuid exposed as 16 raw bytes for parity with C++; rclpy's wire format treats it
+        // the same way. Construct on the Python side via bytes(16) when not round-tripping.
+        .def_prop_rw("uuid",
+            [](tesseract_common::JointTrajectory const& self) {
+              return nb::bytes(reinterpret_cast<const char*>(self.uuid.data), self.uuid.size());
+            },
+            [](tesseract_common::JointTrajectory& self, nb::bytes const& b) {
+              if (b.size() != 16)
+                throw std::invalid_argument("uuid must be exactly 16 bytes");
+              std::memcpy(self.uuid.data, b.c_str(), 16);
+            })
+        .def("__len__", &tesseract_common::JointTrajectory::size)
+        .def("__iter__",
+             [](tesseract_common::JointTrajectory& self) {
+               return nb::make_iterator(nb::type<tesseract_common::JointTrajectory>(),
+                                        "iterator", self.begin(), self.end());
+             }, nb::keep_alive<0, 1>());
 
     // ========== AllowedCollisionMatrix ==========
     nb::class_<tesseract_common::AllowedCollisionMatrix>(m, "AllowedCollisionMatrix")

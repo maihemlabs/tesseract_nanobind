@@ -1,4 +1,6 @@
-from collections.abc import Sequence
+"""tesseract_common Python bindings (nanobind)"""
+
+from collections.abc import Iterator, Sequence
 import enum
 from typing import Annotated, TypeAlias, overload
 
@@ -94,7 +96,7 @@ class Resource:
 
     def getResourceContents(self) -> bytes: ...
 
-    def getResourceContentStream(self) -> "std::__1::basic_istream<char, std::__1::char_traits<char>>": ...
+    def getResourceContentStream(self) -> "std::istream": ...
 
 class BytesResource(Resource):
     @overload
@@ -195,6 +197,35 @@ class JointState:
 
     @time.setter
     def time(self, arg: float, /) -> None: ...
+
+class JointTrajectory:
+    @overload
+    def __init__(self, description: str = '') -> None: ...
+
+    @overload
+    def __init__(self, states: Sequence[JointState], description: str = '') -> None: ...
+
+    @property
+    def states(self) -> list[JointState]: ...
+
+    @states.setter
+    def states(self, arg: Sequence[JointState], /) -> None: ...
+
+    @property
+    def description(self) -> str: ...
+
+    @description.setter
+    def description(self, arg: str, /) -> None: ...
+
+    @property
+    def uuid(self) -> bytes: ...
+
+    @uuid.setter
+    def uuid(self, arg: bytes, /) -> None: ...
+
+    def __len__(self) -> int: ...
+
+    def __iter__(self) -> Iterator[JointState]: ...
 
 class AllowedCollisionMatrix:
     def __init__(self) -> None: ...

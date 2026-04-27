@@ -35,9 +35,10 @@ MODULES=(
     "tesseract_robotics.trajopt_ifopt._trajopt_ifopt:trajopt_ifopt"
     "tesseract_robotics.trajopt_sqp._trajopt_sqp:trajopt_sqp"
     # Optional: only present when built with -DTESSERACT_NANOBIND_BUILD_ROS=ON.
-    # The loop below silently skips modules that fail to import, so this entry
-    # is a no-op on ROS-less builds.
+    # The loop below silently skips modules that fail to import, so these entries
+    # are no-ops on ROS-less builds.
     "tesseract_robotics.tesseract_ros2_monitoring._tesseract_ros2_monitoring:tesseract_ros2_monitoring"
+    "tesseract_robotics.tesseract_ros2_rosutils._tesseract_ros2_rosutils:tesseract_ros2_rosutils"
 )
 
 # Pattern file for type cleanup (if exists)

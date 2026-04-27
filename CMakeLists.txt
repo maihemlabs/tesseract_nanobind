@@ -368,7 +368,7 @@ add_tesseract_nanobind_extension(
 # published wheel stays ROS-free. Enable with -DTESSERACT_NANOBIND_BUILD_ROS=ON
 # in a shell that has sourced a ROS 2 distro (e.g. /opt/ros/jazzy/setup.bash).
 option(TESSERACT_NANOBIND_BUILD_ROS
-       "Build ROS 2 bindings (tesseract_ros2_monitoring). Requires a sourced ROS 2 environment."
+       "Build ROS 2 bindings (tesseract_ros2_monitoring, tesseract_ros2_rosutils). Requires a sourced ROS 2 environment."
        OFF)
 
 if(TESSERACT_NANOBIND_BUILD_ROS)
@@ -377,6 +377,11 @@ if(TESSERACT_NANOBIND_BUILD_ROS)
   find_package(tesseract_msgs REQUIRED)
   find_package(tesseract_rosutils REQUIRED)
   find_package(tesseract_monitoring REQUIRED)
+  find_package(geometry_msgs REQUIRED)
+  find_package(sensor_msgs REQUIRED)
+  find_package(trajectory_msgs REQUIRED)
+  find_package(std_msgs REQUIRED)
+  find_package(builtin_interfaces REQUIRED)
   message(STATUS "Building tesseract_ros2_monitoring against rclcpp ${rclcpp_VERSION}")
 
   # tesseract_msgs generated headers (e.g. tesseract_msgs/msg/environment_state.hpp)
@@ -395,6 +400,22 @@ if(TESSERACT_NANOBIND_BUILD_ROS)
     tesseract::tesseract_common
     rclcpp::rclcpp
     ${tesseract_msgs_TARGETS}
+  )
+
+  add_tesseract_nanobind_extension(
+    tesseract_ros2_rosutils
+    src/tesseract_ros2_rosutils/tesseract_ros2_rosutils_bindings.cpp
+    tesseract_rosutils::tesseract_rosutils
+    tesseract::tesseract_environment
+    tesseract::tesseract_scene_graph
+    tesseract::tesseract_common
+    rclcpp::rclcpp
+    ${tesseract_msgs_TARGETS}
+    ${geometry_msgs_TARGETS}
+    ${sensor_msgs_TARGETS}
+    ${trajectory_msgs_TARGETS}
+    ${std_msgs_TARGETS}
+    ${builtin_interfaces_TARGETS}
   )
 endif()
 

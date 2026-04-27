@@ -161,7 +161,12 @@ This runs ruff + auto-staging on commit, and pyright + pytest on push (configure
 
 ### Optional ROS 2 bindings
 
-The `tesseract_ros2_monitoring` submodule (wrapping the `tesseract_monitoring` package from [`tesseract_ros2`](https://github.com/tesseract-robotics/tesseract_ros2)) is gated behind `-DTESSERACT_NANOBIND_BUILD_ROS=ON` and is **off by default**. Default wheels remain ROS-free.
+Two ROS submodules are gated behind `-DTESSERACT_NANOBIND_BUILD_ROS=ON` and are **off by default**:
+
+- `tesseract_ros2_monitoring` — wraps the `tesseract_monitoring` package from [`tesseract_ros2`](https://github.com/tesseract-robotics/tesseract_ros2) (`ROSEnvironmentMonitor`, `CurrentStateMonitor`, `ROSContext`).
+- `tesseract_ros2_rosutils` — wraps a high-leverage subset of `tesseract_rosutils` conversions (`Pose` ↔ `Isometry3d`, `Command` ↔ `EnvironmentCommand`, `JointTrajectory` flavors).
+
+Default wheels remain ROS-free.
 
 To build the ROS 2 bindings locally:
 
@@ -187,10 +192,10 @@ source ws/install/setup.bash
 pip install -e . --no-build-isolation \
     --config-settings=cmake.define.TESSERACT_NANOBIND_BUILD_ROS=ON
 
-pytest tests/tesseract_ros2_monitoring
+pytest tests/tesseract_ros2_monitoring tests/tesseract_ros2_rosutils
 ```
 
-ROS-less builds automatically skip the submodule's tests via `pytest.importorskip`. Tested against ROS 2 Jazzy.
+ROS-less builds automatically skip both submodules' tests via `pytest.importorskip`. Tested against ROS 2 Jazzy.
 
 ### Building portable wheels
 
