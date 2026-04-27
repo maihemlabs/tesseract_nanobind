@@ -4,12 +4,21 @@
  *        tesseract_ros2 (ROS 2 flavor).
  *
  * Exposes:
- *   - `ROSContext`     : RAII wrapper owning rclcpp::init/shutdown and a
- *                        user-facing rclcpp::Node with a background executor.
+ *   - `RclcppNode`               (opaque handle to rclcpp::Node)
+ *   - `ROSContext`               (RAII wrapper owning init/node/executor)
  *   - `MonitoredEnvironmentMode` (enum, from tesseract core)
  *   - `EnvironmentMonitor`       (abstract base, from tesseract core)
  *   - `ROSEnvironmentMonitor`    (ROS 2 concrete subclass)
  *   - `CurrentStateMonitor`      (read-only view, subset of public API)
+ *
+ * Deferred to a follow-up: `EnvironmentMonitorInterface` and
+ * `ROSEnvironmentMonitorInterface`. Upstream `tesseract_monitoring`
+ * declares 8 `setEnvironmentState` overrides as pure-virtual + final on
+ * the ROS subclass but only implements 7 (the `(ns, TransformMap)`
+ * variant is missing on both 0.34.0 and master). That leaves the
+ * subclass's vtable referencing an undefined symbol; consumers don't
+ * notice unless they trigger RTTI lookup, which `nb::class_<sub, base>`
+ * does. Needs an upstream PR to land before we can bind it.
  *
  * The `ROSContext` helper is modeled on moveit_py's node-ownership lifecycle
  * (init -> node -> executor -> spin thread -> shutdown). Written from
@@ -96,6 +105,15 @@ public:
   rclcpp::Node::SharedPtr node() const { return node_; }
   std::string nodeName() const { return node_ ? std::string(node_->get_name()) : std::string{}; }
 
+  /// True iff `rclcpp::ok()` for the default context. After shutdown(), or if
+  /// rclcpp itself was shut down by another consumer, this returns false.
+  bool isOk() const { return rclcpp::ok(); }
+
+  /// True iff this context still owns its node + executor (i.e. shutdown()
+  /// has not run). Distinct from `isOk()`: `rclcpp::ok()` reflects the global
+  /// rclcpp context, while `isActive()` reflects this wrapper's local state.
+  bool isActive() const { return static_cast<bool>(node_) && static_cast<bool>(executor_); }
+
   void shutdown()
   {
     if (executor_)
@@ -130,6 +148,22 @@ NB_MODULE(_tesseract_ros2_monitoring, m)
 
   m.doc() = "Python bindings for tesseract_monitoring (tesseract_ros2, ROS 2 Jazzy+)";
 
+  // ---- RclcppNode (opaque) ----------------------------------------------
+  // Bind rclcpp::Node as an opaque holder so Python can pass the wrapped
+  // node to other rclcpp-bound APIs. We expose only the read-only accessors
+  // useful for diagnostics; the node has no public constructor reachable
+  // from Python — get one via ROSContext.get_node().
+  nb::class_<rclcpp::Node>(m, "RclcppNode",
+      "Opaque handle to an rclcpp::Node. Obtained via ROSContext.get_node(); "
+      "intended to be passed to other rclcpp-flavored bindings that need to "
+      "share a node with this monitoring context.")
+      .def("get_name",
+           [](const rclcpp::Node& self) { return std::string(self.get_name()); })
+      .def("get_namespace",
+           [](const rclcpp::Node& self) { return std::string(self.get_namespace()); })
+      .def("get_fully_qualified_name",
+           [](const rclcpp::Node& self) { return std::string(self.get_fully_qualified_name()); });
+
   // ---- ROSContext --------------------------------------------------------
   nb::class_<ROSContext>(m, "ROSContext",
       "Owns rclcpp::init/shutdown lifetime and one user-facing rclcpp::Node. "
@@ -144,6 +178,22 @@ NB_MODULE(_tesseract_ros2_monitoring, m)
            "`node_name`, and start a background executor thread.")
       .def("node_name", &ROSContext::nodeName,
            "Return the fully-qualified name of the owned rclcpp::Node.")
+      // get_node() returns a shared_ptr to the rclcpp::Node. keep_alive<0,1>
+      // ensures the context (patient=1) outlives the returned RclcppNode
+      // (nurse=0): even though the node's shared_ptr keeps the C++ object
+      // alive on its own, the context owns the executor that *spins* the
+      // node, and tearing the context down behind a still-held node
+      // reference would silently stop the spin thread.
+      .def("get_node", &ROSContext::node,
+           nb::keep_alive<0, 1>(),
+           "Return an opaque handle to the wrapped rclcpp::Node, suitable "
+           "for sharing with other rclcpp-bound APIs.")
+      .def("is_ok", &ROSContext::isOk,
+           "True iff `rclcpp::ok()`; reflects the global rclcpp default "
+           "context, not just this wrapper.")
+      .def("is_active", &ROSContext::isActive,
+           "True iff this context still owns its node + executor (i.e. "
+           "shutdown() has not run).")
       .def("shutdown", &ROSContext::shutdown,
            "Stop the executor, join the spin thread, drop the node, and "
            "(if this context owned rclcpp::init) call rclcpp::shutdown. "

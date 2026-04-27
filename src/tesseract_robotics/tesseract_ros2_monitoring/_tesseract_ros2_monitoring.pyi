@@ -11,6 +11,17 @@ import tesseract_robotics.tesseract_environment._tesseract_environment
 import tesseract_robotics.tesseract_state_solver._tesseract_state_solver
 
 
+class RclcppNode:
+    """
+    Opaque handle to an rclcpp::Node. Obtained via ROSContext.get_node(); intended to be passed to other rclcpp-flavored bindings that need to share a node with this monitoring context.
+    """
+
+    def get_name(self) -> str: ...
+
+    def get_namespace(self) -> str: ...
+
+    def get_fully_qualified_name(self) -> str: ...
+
 class ROSContext:
     """
     Owns rclcpp::init/shutdown lifetime and one user-facing rclcpp::Node. A background SingleThreadedExecutor spins the node so parameter services and other rclcpp callbacks fire. Mirrors the typical environment_monitor_node.cpp construction pattern from tesseract_ros2.
@@ -23,6 +34,21 @@ class ROSContext:
 
     def node_name(self) -> str:
         """Return the fully-qualified name of the owned rclcpp::Node."""
+
+    def get_node(self) -> RclcppNode:
+        """
+        Return an opaque handle to the wrapped rclcpp::Node, suitable for sharing with other rclcpp-bound APIs.
+        """
+
+    def is_ok(self) -> bool:
+        """
+        True iff `rclcpp::ok()`; reflects the global rclcpp default context, not just this wrapper.
+        """
+
+    def is_active(self) -> bool:
+        """
+        True iff this context still owns its node + executor (i.e. shutdown() has not run).
+        """
 
     def shutdown(self) -> None:
         """

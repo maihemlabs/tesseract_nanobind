@@ -51,6 +51,21 @@ def test_ros_context_node_name(ctx):
     assert ctx.node_name() == "tesseract_nanobind_test_node"
 
 
+def test_ros_context_state_introspection(ctx):
+    # `is_active` reflects the wrapper; `is_ok` reflects rclcpp's global
+    # default context. Both should be True for a freshly built ctx.
+    assert ctx.is_active() is True
+    assert ctx.is_ok() is True
+
+
+def test_ros_context_get_node(ctx):
+    node = ctx.get_node()
+    assert node.get_name() == "tesseract_nanobind_test_node"
+    # default namespace for a node created without explicit namespace is "/"
+    assert node.get_namespace() == "/"
+    assert node.get_fully_qualified_name() == "/tesseract_nanobind_test_node"
+
+
 def test_construct_with_prebuilt_env(ctx):
     env = _make_env()
     mon = tm_ros2.ROSEnvironmentMonitor(ctx, env, "nb_test_ns")

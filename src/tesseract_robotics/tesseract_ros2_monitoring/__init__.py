@@ -13,6 +13,7 @@ import tesseract_robotics.tesseract_environment  # noqa: F401 - base Environment
 from tesseract_robotics.tesseract_ros2_monitoring._tesseract_ros2_monitoring import *  # noqa: F401,F403
 
 __all__ = [
+    "RclcppNode",
     "ROSContext",
     "MonitoredEnvironmentMode",
     "EnvironmentMonitor",
