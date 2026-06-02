@@ -179,7 +179,7 @@ Special thanks to:
 - **Levi Armstrong** - Tesseract core developer
 - **Jelle Feringa** ([Terrestrial](http://terrestrial.construction)) - nanobind port developer
 - The ROS-Industrial consortium for supporting Tesseract development
-- - **Joel Kang** ([Maihem]([http://terrestrial.construction](https://www.maihem.com/team-mission)))
+- - **Joel Kang** ([Maihem](https://www.maihem.com/team-mission))
 - The ROS-Industrial consortium for supporting Tesseract development
 
 ## License
