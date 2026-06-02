@@ -178,8 +178,7 @@ Special thanks to:
 - **John Wason** (Wason Technology, LLC) - Original tesseract_python author and Tesseract maintainer
 - **Levi Armstrong** - Tesseract core developer
 - **Jelle Feringa** ([Terrestrial](http://terrestrial.construction)) - nanobind port developer
-- The ROS-Industrial consortium for supporting Tesseract development
-- - **Joel Kang** ([Maihem](https://www.maihem.com/team-mission))
+- **Joel Kang** ([Maihem](https://www.maihem.com/team-mission))
 - The ROS-Industrial consortium for supporting Tesseract development
 
 ## License
