@@ -1,47 +1,46 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-
 ## [Unreleased]
 
-### Added
+## [0.35.0.2] - 2026-06-04 — aarch64 / Jetson Linux wheels + collision manager bindings
 
-- contributed by [@Joelkang]
+Extends Linux wheel coverage to `aarch64` (including NVIDIA Jetson), completes the contact-manager binding surface, and hardens the new ROS RPY decomposition against gimbal-lock edge cases ([#97], [669f2da], [f30014b]).
 
-  - `Octree` geometry bindings (plus `octomap::OcTree`, `OctreeSubType`, `PointCloud`, `createOctree`) and the remaining `tesseract_geometry` utilities (`isIdentical`, `extractVertices`, `toTriangleMesh`).
-  - **Python-subclassable Descartes evaluators/sampler/profile** for `tesseract_motion_planners_descartes`. New bindings for `DescartesStateD`, `DescartesStateSampleD`, `DescartesEdgeEvaluatorD`, `DescartesWaypointSamplerD`, `DescartesStateEvaluatorD`, and a now-subclassable `DescartesMoveProfileD` let users override `createWaypointSampler` / `createEdgeEvaluator` / `createStateEvaluator` from Python.
+- **`aarch64` / NVIDIA Jetson Linux wheels** — new GitHub Actions matrix entry plus Jetson build patches, built for Python 3.12+ on `aarch64`; Linux wheel CI standardised on `pixi run build-cpp` / `build-wheel` ([#52], [dc3f1df], [605dc4d], [af7bc4e], [#91], [ba0510f], [c897251], [@Joelkang]).
+- **Collision manager bindings completed** — remaining discrete/continuous contact-manager surface plus Descartes `MoveProfile` contact-manager config ([#94], [9bfd6b1], [7a3b0e3], [@Joelkang]).
+
+## [0.35.0.1] - 2026-05-29 — tesseract 0.35.0 upgrade + Eigen geometry suite + RAPID emitter
+
+Major dependency bump to **tesseract 0.35.0**, a complete Eigen geometry binding surface with scalar-last quaternions as the project canon, a `Pose` that now *is* an `Isometry3d`, and a new ABB RAPID code emitter. (First wheel release of the 0.35 series; the project's `setuptools_scm` scheme requires four-component tags, so it is `0.35.0.1`, not `0.35.0`.)
+
+- **Complete Eigen geometry binding suite** — fleshed-out `Vector3d` / `Vector4d` / `Matrix3d` / `Quaterniond` / `AngleAxisd` / `Isometry3d` surface, with scalar-last `[qx, qy, qz, qw]` `Quaterniond.from_xyzw` and `Quaterniond.from_rpy` / `to_rpy` ZYX ROS RPY interop; float64 default precision centralised via Eigen `NumTraits` ([#76], [492ab7a], [544f7dd], [1d6f5c7], [ef26fc9]).
+- **ABB RAPID code emitter** for `tesseract_command_language` (`tesseract_robotics.emitters.rapid`) ([#75], [37f21b2]).
+- **`Octree` geometry bindings** (plus `octomap::OcTree`, `OctreeSubType`, `PointCloud`, `createOctree`) and the remaining `tesseract_geometry` utilities (`isIdentical`, `extractVertices`, `toTriangleMesh`) ([#67], [4575aa9], [@Joelkang]).
+- **Python-subclassable Descartes evaluators/sampler/profile** for `tesseract_motion_planners_descartes` — new bindings for `DescartesStateD`, `DescartesStateSampleD`, `DescartesEdgeEvaluatorD`, `DescartesWaypointSamplerD`, `DescartesStateEvaluatorD`, and a now-subclassable `DescartesMoveProfileD` let users override `createWaypointSampler` / `createEdgeEvaluator` / `createStateEvaluator` from Python ([#83], [620b228], [@Joelkang]).
+- **Upgraded to tesseract 0.35.0** — deps bumped (`rosinstall` → `repos`), `MIGRATION.md` sed applied, namespace aliases added, resource URIs and dev paths updated for the 0.35 layout, wheel data dir `tesseract_support` → `tesseract/support`, `kinematics_core_factories` → `kinematics_factories`, descartes `tp::MoveInstructionPoly` → `tcl::MoveInstructionPoly` ([#86], [6710ccf], [422c5ea], [4e08a36]).
+- **`Pose` now subclasses `Isometry3d`** (`tesseract_robotics.planning`) — rotation math via Eigen, numpy-property facade dropped, factories collapsed to one name accepting both scalar-positional and arraylike call styles, `Transform` alias removed in favour of the single canonical `Pose`, stored-data accessors exposed as properties ([#76], [a202a45], [caa3b19]).
+- **Scalar-last quaternions declared project canon** — `[qx, qy, qz, qw]`; `Quaterniond(w, x, y, z)` literals migrated to `Quaterniond.from_xyzw` ([0bd408d], [f7b2fea]).
+- README gains an examples section and a refreshed platform-support matrix ([d7bde99], [8eed899]).
+- `KinematicsInformation.group_tcps` exposed to Python (`tesseract_srdf`) ([#79], [52fdfba]).
+- `TaskComposerNodeInfoContainer` returns `TaskComposerNodeInfo` ([#81], [106d162], [@Joelkang]).
+- `getSeed()` exposed on `CartesianWaypoint` ([#80], [0c57074], [@Joelkang]).
+- Viewer light color ([#73], [3b4c545], [@johnwason]).
 
 ## [0.34.1.7] - 2026-05-09 — command_language I/O instructions + TaskComposer introspection
 
 Python API surface expansion: `tesseract_command_language` gains its remaining I/O and pacing instruction types (`Wait`, `Timer`, `SetAnalog`, `SetDigital`, `SetTool`) — closing the gap that previously forced raster and pick-and-place pipelines through C++ or YAML — alongside TaskComposer DAG visualisation via GraphViz DOT output and `TaskComposerDataStorage` introspection helpers. Welcomes [@seonixx] (Simon White) as a new contributor.
 
-### Added
-
-- contributed by [@Joelkang]
-
-  - **Remaining `tesseract_command_language` instruction types** bound: `WaitInstruction`, `TimerInstruction`, `SetAnalogInstruction`, `SetDigitalInstruction`, `SetToolInstruction`, with their `WaitInstructionType` / `TimerInstructionType` enums and `InstructionPoly_as_*` cast helpers. Closes the I/O-and-pacing gap that previously forced raster/pick-and-place pipelines to be authored in C++ or YAML. New `tests/tesseract_command_language/test_command_language.py` covers construction, casting, and `InstructionPoly` round-tripping ([#70], [a4c26df]).
-  - **TaskComposer DAG visualisation** — `getDotgraph()` / `saveDotgraph()` overloads on `TaskComposerNode`, with an optional `TaskComposerNodeInfoContainer` argument to highlight the executed path on a previously-run DAG. Emits GraphViz DOT for debugging otherwise-opaque planning pipelines ([#63], [e7c3a92]).
-  - **`TaskComposerDataStorage` AnyPoly cast/wrap helpers** — `AnyPoly_wrap_TaskComposerDataStorage` and `AnyPoly_as_TaskComposerDataStorage`, so DAG storage state can be inspected after each node from Python instead of only via C++ ([#66], [b30ed46]).
-
-- contributed by [@seonixx]
-
-  - **`TaskComposerDataStorage.getAllData()`** no-arg overload binding returning the full data map ([#66], [990705f]).
-  - **`DiscreteContactCheckTask` exposes `contact_results`** through `task_infos` `data_storage`, with unit and integration test coverage ([#66], [4fe07bf], [06178f0]).
-
-### Fixed
-
-- contributed by [@Joelkang]
-
-  - **SimplePlanner and time-parameterization profiles** now reachable via the public `tesseract_motion_planners_simple` and `tesseract_time_parameterization` package paths instead of only the underscore-prefixed C++ extension modules. C++ binding-side registrations retired in favour of `__init__.py` re-exports; `test_constant_tcp.py` consolidated into `test_time_parameterization.py` ([#62], [d73e227], [30c8e9f]).
-  - `InstructionPoly_as_CompositeInstruction` re-exported from `tesseract_command_language` package init — was bound but not surfaced ([#70], [110e1e0]).
+- **Remaining `tesseract_command_language` instruction types** bound: `WaitInstruction`, `TimerInstruction`, `SetAnalogInstruction`, `SetDigitalInstruction`, `SetToolInstruction`, with their `WaitInstructionType` / `TimerInstructionType` enums and `InstructionPoly_as_*` cast helpers. Closes the I/O-and-pacing gap that previously forced raster/pick-and-place pipelines to be authored in C++ or YAML. New `tests/tesseract_command_language/test_command_language.py` covers construction, casting, and `InstructionPoly` round-tripping ([#70], [a4c26df], [@Joelkang]).
+- **TaskComposer DAG visualisation** — `getDotgraph()` / `saveDotgraph()` overloads on `TaskComposerNode`, with an optional `TaskComposerNodeInfoContainer` argument to highlight the executed path on a previously-run DAG. Emits GraphViz DOT for debugging otherwise-opaque planning pipelines ([#63], [e7c3a92], [@Joelkang]).
+- **`TaskComposerDataStorage` AnyPoly cast/wrap helpers** — `AnyPoly_wrap_TaskComposerDataStorage` and `AnyPoly_as_TaskComposerDataStorage`, so DAG storage state can be inspected after each node from Python instead of only via C++ ([#66], [b30ed46], [@Joelkang]).
+- **`TaskComposerDataStorage.getAllData()`** no-arg overload binding returning the full data map ([#66], [990705f], [@seonixx]).
+- **`DiscreteContactCheckTask` exposes `contact_results`** through `task_infos` `data_storage`, with unit and integration test coverage ([#66], [4fe07bf], [06178f0], [@seonixx]).
+- **SimplePlanner and time-parameterization profiles** now reachable via the public `tesseract_motion_planners_simple` and `tesseract_time_parameterization` package paths instead of only the underscore-prefixed C++ extension modules. C++ binding-side registrations retired in favour of `__init__.py` re-exports; `test_constant_tcp.py` consolidated into `test_time_parameterization.py` ([#62], [d73e227], [30c8e9f], [@Joelkang]).
+- `InstructionPoly_as_CompositeInstruction` re-exported from `tesseract_command_language` package init — was bound but not surfaced ([#70], [110e1e0], [@Joelkang]).
 
 ## [0.34.1.6] - 2026-04-27 — PyPI README refresh
 
 Same wheels as 0.34.1.5; recut so the published wheel's README metadata includes the Windows build badge alongside Linux and macOS on PyPI's project page.
-
-### Changed
 
 - README badge row includes a Windows build badge ([6656815]).
 
@@ -49,26 +48,14 @@ Same wheels as 0.34.1.5; recut so the published wheel's README metadata includes
 
 First complete cross-platform PyPI release: Linux, macOS, **and** Windows wheels for Python 3.9–3.12. Closes the long-running [#40] Windows wheels initiative ([#58]). Also ships a batch of profile-binding contributions from [@Joelkang] that had been queued in Unreleased.
 
-### Added
-
 - **Windows x64 wheels** published to PyPI via the new `wheels-windows.yml` workflow. Mirrors `wheels-{linux,macos}.yml`; sources C++ deps from conda-forge via pixi; bundles plugin DLLs via `delvewheel repair --analyze-existing` ([f9c122d], [3e3a2e4]).
 - `__init__.py` prepends the package dir and `tesseract_robotics_nanobind.libs/` to `PATH` on Windows — required because `boost::dll`'s plain `LoadLibrary` ignores `os.add_dll_directory` ([006ce38]).
 - Cereal polymorphic types re-registered in the `tesseract_serialization` binding TU — MSVC instantiates the cereal registry per-DLL, so upstream's registrations don't reach the consumer `.pyd` without re-registration ([af88515]).
 - New developer doc `docs/developer/windows-wheels.md` capturing four Windows wheel packaging gotchas surfaced during the gh-40 diagnosis ([fe5ad75]).
-
-
-- contributed by [@Joelkang]
-
-  - `CompositeInstruction.push_back` now accepts a `CompositeInstruction` in addition to a plain `Instruction`, enabling nested composites (e.g. raster programs) to be built from Python the same way they are in C++ ([#51], [6d17314]).
-  - **SimplePlanner profiles** configurable from Python — `SimplePlannerCompositeProfile` plus seven concrete move profiles (`FixedSize`, `FixedSizeAssign`, `FixedSizeAssignNoIK`, `LVS`, `LVSNoIK`, `LVSAssign`, `LVSAssignNoIK`), with `ProfileDictionary_addSimplePlannerMoveProfile` / `…CompositeProfile` helpers for registration ([#54], [e2bf837]).
-
-  - **task_composer planning-node profiles** exposed through a new `tesseract_task_composer_planning` module: `ContactCheckProfile`, `FixStateBoundsProfile`, `FixStateCollisionProfile`, `KinematicLimitsCheckProfile`, `MinLengthProfile`, `ProfileSwitchProfile`, and `UpsampleTrajectoryProfile`. Heavy TrajOpt-typed members on `FixStateCollisionProfile` (OSQP settings, SQP params, coeff data) are intentionally skipped — configure those via YAML or C++ ([#56], [62cd2cd]).
-
-  - **`ConstantTCPSpeedParameterization`** (KDL-based, constant TCP-speed time parameterization) bound alongside its `ConstantTCPSpeedCompositeProfile` ([#55], [f4f981d]).
-
-
-### Removed
-
+- `CompositeInstruction.push_back` now accepts a `CompositeInstruction` in addition to a plain `Instruction`, enabling nested composites (e.g. raster programs) to be built from Python the same way they are in C++ ([#51], [6d17314], [@Joelkang]).
+- **SimplePlanner profiles** configurable from Python — `SimplePlannerCompositeProfile` plus seven concrete move profiles (`FixedSize`, `FixedSizeAssign`, `FixedSizeAssignNoIK`, `LVS`, `LVSNoIK`, `LVSAssign`, `LVSAssignNoIK`), with `ProfileDictionary_addSimplePlannerMoveProfile` / `…CompositeProfile` helpers for registration ([#54], [e2bf837], [@Joelkang]).
+- **task_composer planning-node profiles** exposed through a new `tesseract_task_composer_planning` module: `ContactCheckProfile`, `FixStateBoundsProfile`, `FixStateCollisionProfile`, `KinematicLimitsCheckProfile`, `MinLengthProfile`, `ProfileSwitchProfile`, and `UpsampleTrajectoryProfile`. Heavy TrajOpt-typed members on `FixStateCollisionProfile` (OSQP settings, SQP params, coeff data) are intentionally skipped — configure those via YAML or C++ ([#56], [62cd2cd], [@Joelkang]).
+- **`ConstantTCPSpeedParameterization`** (KDL-based, constant TCP-speed time parameterization) bound alongside its `ConstantTCPSpeedCompositeProfile` ([#55], [f4f981d], [@Joelkang]).
 - vcpkg-based `wheels-windows.yml` variant (workflow_dispatch-only, never green) replaced by the conda-forge / pixi pipeline of the same name ([3e3a2e4]).
 
 ## [0.34.1.4] - 2026-04-27 [YANKED] — partial cross-platform release
@@ -79,47 +66,33 @@ First complete cross-platform PyPI release: Linux, macOS, **and** Windows wheels
 
 Follow-up to the macOS arm64 debut in `0.34.1.1`, resolving a garbage-collection crash that surfaced in fresh virtual environments during motion planning.
 
-### Fixed
-
 - Dedupe versioned dylibs in the wheel — the actual root cause of the macOS GC crash ([#48], [7f53185]).
 - Pin plugin dylibs on macOS to prevent a garbage-collection crash during motion planning ([#48], [590343f]).
-
-### Changed
-
 - Restore the CI macOS test scope that had been narrowed as a workaround for [#48] ([#49], [07f8f9c]).
 
 ## [0.34.1.1] - 2026-04-23 — macOS arm64 wheels debut
 
 First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.yml` workflow parallel to the existing Linux x86_64 pipeline. Also introduces a Python trampoline for `ConstraintSet`, Python 3.9 compatibility for example modules, and installable example scripts.
 
-### Added
-
 - **macOS arm64 wheels** published to PyPI via a split, per-platform workflow ([d80e689]).
 - Python trampoline for `ifopt.ConstraintSet` so users can subclass it from Python for custom SQP constraints ([361c60e]).
-- Examples installable as console scripts (e.g. `tesseract_basic_cartesian_example`) via `[project.scripts]` ([2c62952]).
-  - contributed by [@marip8]
+- Examples installable as console scripts (e.g. `tesseract_basic_cartesian_example`) via `[project.scripts]` ([2c62952], [@marip8]).
 - `pixi run build-wheel` task for local wheel builds ([e26df2a]).
-
-### Changed
-
 - Non-benchmark tests fail loud instead of being silently skipped ([a1d7607]).
-
-### Fixed
-
 - Python 3.9 compatibility for example modules via `from __future__ import annotations` ([87ce68e]).
 
-[Unreleased]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.7...HEAD
+[Unreleased]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.2...HEAD
+[0.35.0.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.1...0.35.0.2
+[0.35.0.1]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.7...0.35.0.1
 [0.34.1.7]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.6...0.34.1.7
 [0.34.1.6]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.5...0.34.1.6
 [0.34.1.5]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.4...0.34.1.5
 [0.34.1.4]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.2...0.34.1.4
 [0.34.1.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.1...0.34.1.2
 [0.34.1.1]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.0...0.34.1.1
-[tesseract-planning]: https://github.com/tesseract-robotics/tesseract_planning
 [#40]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/40
 [#48]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/48
 [#49]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/49
-[#50]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/50
 [#51]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/51
 [#54]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/54
 [#55]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/55
@@ -129,6 +102,19 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [#63]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/63
 [#66]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/66
 [#70]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/70
+[#52]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/52
+[#67]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/67
+[#73]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/73
+[#75]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/75
+[#76]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/76
+[#79]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/79
+[#80]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/80
+[#81]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/81
+[#83]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/83
+[#86]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/86
+[#91]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/91
+[#94]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/94
+[#97]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/97
 [07f8f9c]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/07f8f9c8c54ab13c3d10ceca00181091d0126336
 [2c62952]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/2c62952fded6cb1253cb45441d7cd6f9b0423593
 [361c60e]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/361c60e263f0768e1b23d3a9919f700d06b15993
@@ -157,6 +143,36 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [b30ed46]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/b30ed46
 [d73e227]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/d73e227
 [e7c3a92]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/e7c3a92
+[492ab7a]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/492ab7a
+[544f7dd]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/544f7dd
+[1d6f5c7]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/1d6f5c7
+[ef26fc9]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/ef26fc9
+[37f21b2]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/37f21b2
+[4575aa9]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/4575aa9
+[620b228]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/620b228
+[6710ccf]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/6710ccf
+[422c5ea]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/422c5ea
+[4e08a36]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/4e08a36
+[a202a45]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/a202a45
+[caa3b19]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/caa3b19
+[0bd408d]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/0bd408d
+[f7b2fea]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/f7b2fea
+[52fdfba]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/52fdfba
+[106d162]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/106d162
+[0c57074]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/0c57074
+[3b4c545]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/3b4c545
+[d7bde99]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/d7bde99
+[8eed899]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/8eed899
+[9bfd6b1]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/9bfd6b1
+[dc3f1df]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/dc3f1df
+[605dc4d]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/605dc4d
+[af7bc4e]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/af7bc4e
+[ba0510f]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/ba0510f
+[c897251]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/c897251
+[669f2da]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/669f2da
+[f30014b]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/f30014b
+[7a3b0e3]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/7a3b0e3
 [@Joelkang]: https://github.com/Joelkang
+[@johnwason]: https://github.com/johnwason
 [@marip8]: https://github.com/marip8
 [@seonixx]: https://github.com/seonixx
