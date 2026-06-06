@@ -88,7 +88,7 @@ def _resolve_config_paths(config_path: Path, plugin_path: str | None) -> Path:
 
     Handles both:
     - @PLUGIN_PATH@ placeholder (bundled wheels)
-    - /usr/local/lib (dev mode with ws/install)
+    - /usr/local/lib (the conda task_composer config's default search path)
     """
     if plugin_path is None:
         return config_path
@@ -130,12 +130,20 @@ def _configure_environment():
     support_dir = data_dir / "tesseract" / "support"
     config_dir = data_dir / "task_composer_config"
 
-    # Fallback: dev workspace layout (editable install)
-    # pkg_dir = src/tesseract_robotics -> project root is 2 levels up
-    project_root = pkg_dir.parent.parent
-    ws_support = project_root / "ws" / "src" / "tesseract" / "support"
-    ws_resource = project_root / "ws" / "src" / "tesseract"
-    ws_composer = project_root / "ws" / "src" / "tesseract_planning" / "task_composer"
+    # Fallback: editable install (pixi dev env). The tesseract C++ libs + data come
+    # from the tesseract-robotics conda packages under $CONDA_PREFIX — data under
+    # share/ (Library/share on conda Windows), plugin libs under lib/ (Library/bin
+    # on Windows). Mirrors the layout the wheel bundles into the package's data/ dir.
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    conda_share = Path(conda_prefix) / "share" if conda_prefix else None
+    if conda_share and not (conda_share / "tesseract").is_dir():
+        # conda on Windows installs data under the Library/ prefix
+        alt = Path(conda_prefix) / "Library" / "share"
+        if (alt / "tesseract").is_dir():
+            conda_share = alt
+    ws_support = (conda_share / "tesseract" / "support") if conda_share else pkg_dir / "_no_dev"
+    ws_resource = (conda_share / "tesseract") if conda_share else pkg_dir / "_no_dev"
+    ws_composer = (conda_share / "tesseract_planning" / "task_composer") if conda_share else pkg_dir / "_no_dev"
     ws_config = ws_composer / "config" / "task_composer_plugins.yaml"
 
     # TESSERACT_SUPPORT_DIR: path to tesseract_support (bundled or dev)
@@ -143,11 +151,11 @@ def _configure_environment():
 
     # TESSERACT_RESOURCE_PATH: directory containing `tesseract` as a subdir
     # so locator resolves package://tesseract/support/X via `<path>/tesseract/support/X`.
-    # bundled:   data/tesseract/support → use parent's parent (= data)
-    # dev (ws):  ws/src/tesseract       → use parent (= ws/src)
+    # bundled:   data/tesseract/support       → use parent's parent (= data)
+    # dev (conda): $CONDA_PREFIX/share/tesseract → use parent (= share)
     _set_env_if_missing("TESSERACT_RESOURCE_PATH", support_dir.parent, ws_resource, use_parent=True)
 
-    # Plugin search paths - env var, bundled plugins, or ws/install/lib
+    # Plugin search paths - env var, bundled plugins, or $CONDA_PREFIX/lib (editable)
     # Linux:   pkg_dir (all deps bundled in package root with $ORIGIN rpath)
     # macOS:   .dylibs (delocate-repaired)
     # Windows: pkg_dir (plugin factory DLLs bundled there; delvewheel libs go to
@@ -159,7 +167,14 @@ def _configure_environment():
         bundled_plugin = pkg_dir / "libtesseract_collision_bullet_factories.so"
         dylibs_dir = pkg_dir / ".dylibs"
         bundled_plugin_win = pkg_dir / "tesseract_collision_bullet_factories.dll"
-        ws_install_lib = project_root / "ws" / "install" / "lib"
+        # editable install: plugin factory libs live alongside the conda libs
+        # ($CONDA_PREFIX/lib, or Library/bin for the DLLs on conda Windows).
+        conda_lib = None
+        if conda_prefix:
+            for cand in (Path(conda_prefix) / "lib", Path(conda_prefix) / "Library" / "bin"):
+                if cand.is_dir():
+                    conda_lib = cand
+                    break
 
         if bundled_plugin.exists():
             plugin_path = str(pkg_dir)
@@ -167,8 +182,8 @@ def _configure_environment():
             plugin_path = str(dylibs_dir)
         elif bundled_plugin_win.exists():
             plugin_path = str(pkg_dir)
-        elif editable and ws_install_lib.is_dir():
-            plugin_path = str(ws_install_lib)
+        elif editable and conda_lib is not None:
+            plugin_path = str(conda_lib)
 
     # TESSERACT_TASK_COMPOSER_CONFIG_FILE
     # Check if patching is needed (for bundled wheels or if env.sh set a path)

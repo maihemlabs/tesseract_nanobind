@@ -20,18 +20,11 @@ fi
 
 cd "$PROJECT_ROOT"
 
-# Resolve the colcon workspace root the same way build_tesseract_cpp.sh does:
-# top-level <repo>/ws for local dev, or the enclosing <ws> when the repo is
-# checked out inside a colcon workspace (CI, at <ws>/src/tesseract_nanobind).
-if [[ "$(basename "$(dirname "$PROJECT_ROOT")")" == "src" ]]; then
-    WORKSPACE_DIR="$(dirname "$(dirname "$PROJECT_ROOT")")"
-else
-    WORKSPACE_DIR="$PROJECT_ROOT/ws"
-fi
-
-LIB_DIR="$WORKSPACE_DIR/install/lib"
-export LD_LIBRARY_PATH="$LIB_DIR:$CONDA_PREFIX/lib"
-export CMAKE_PREFIX_PATH="$CONDA_PREFIX:$WORKSPACE_DIR/install"
+# The tesseract C++ libs + plugin factories are provided by the tesseract-robotics
+# conda packages, installed under $CONDA_PREFIX/lib (no more colcon ws/install tree).
+LIB_DIR="$CONDA_PREFIX/lib"
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib"
+export CMAKE_PREFIX_PATH="$CONDA_PREFIX"
 
 if $DEV_MODE; then
     echo "Building dev wheel (no bundling)..."
@@ -87,37 +80,40 @@ for plugin in "${PLUGINS[@]}"; do
     fi
 done
 
-# Bundle the tesseract libs into the package root. For SONAME symlinks
-# (libX.so.1 -> libX.so.1.2.3) copy the real target under the symlink's name —
-# pip's installer dereferences symlinks on extract, so we can't ship the link.
-echo "Copying tesseract libs..."
-for lib in "$LIB_DIR"/*.so*; do
-    if [[ -f "$lib" && ! -L "$lib" ]]; then
-        cp "$lib" "$PKG_DIR/"
-        echo "  Copied: $(basename $lib)"
-    elif [[ -L "$lib" ]]; then
-        target=$(readlink -f "$lib")
-        if [[ -f "$target" ]]; then
-            cp "$target" "$PKG_DIR/$(basename $lib)"
-            echo "  Copied (from symlink): $(basename $lib)"
-        fi
-    fi
+# Bundle the tesseract libs + every shared-lib dependency into the package root.
+#
+# Unlike the old colcon ws/install/lib (a clean tesseract-only tree we could bulk
+# copy), $CONDA_PREFIX/lib holds the entire conda env, so we copy dependency-driven
+# instead: ldd is recursive, so one pass over the objects actually loaded at runtime
+# — the extension modules (subpackage *.so) plus the dlopen'd plugin factories —
+# yields the full transitive set of libs they need (tesseract_*, boost, ompl, fcl,
+# vtk via urdf→pcl_io, …). This mirrors what delocate does automatically on macOS.
+echo "Bundling tesseract libs + transitive deps..."
+seeds=()
+while IFS= read -r ext; do seeds+=("$ext"); done < <(find "$PKG_DIR" -name "*.so" -type f)
+for plugin in "${PLUGINS[@]}"; do
+    [[ -f "$PKG_DIR/$plugin" ]] && seeds+=("$PKG_DIR/$plugin")
 done
 
-# Pull in external (non-system) shared-lib deps of everything bundled so far.
-echo "Finding and copying external deps..."
 deps_file=$(mktemp)
-for so in "$PKG_DIR"/*.so*; do
-    [[ -f "$so" ]] || continue
+for so in "${seeds[@]}"; do
     ldd "$so" 2>/dev/null | grep "=>" | awk '{print $3}' | grep -v "^$" >> "$deps_file" || true
 done
-sort -u "$deps_file" | while read dep; do
-    if [[ -f "$dep" && "$dep" != /lib* && "$dep" != /usr/lib* ]]; then
-        base=$(basename "$dep")
-        if [[ ! -f "$PKG_DIR/$base" ]]; then
-            cp "$dep" "$PKG_DIR/"
-            echo "  Copied: $base"
-        fi
+sort -u "$deps_file" | while read -r dep; do
+    [[ -f "$dep" ]] || continue
+    # Skip OS libs and the interpreter's libpython (provided by the host at runtime).
+    case "$dep" in
+        /lib/*|/lib64/*|/usr/lib/*|/usr/lib64/*) continue ;;
+    esac
+    base=$(basename "$dep")
+    case "$base" in
+        libpython*) continue ;;
+    esac
+    if [[ ! -f "$PKG_DIR/$base" ]]; then
+        # pip dereferences symlinks on extract, so ship the real file (cp -L) under
+        # the SONAME it's referenced by.
+        cp -L "$dep" "$PKG_DIR/$base"
+        echo "  Bundled: $base"
     fi
 done
 rm "$deps_file"

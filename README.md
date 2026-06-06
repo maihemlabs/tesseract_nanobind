@@ -97,7 +97,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Development
 
-This project uses [pixi](https://pixi.sh) exclusively for dependency management and task running — no pip, conda, or venv needed. Pixi manages both the C++ toolchain (cmake, eigen, boost, bullet, ompl, ...) and Python deps in a single lockfile.
+This project uses [pixi](https://pixi.sh) exclusively for dependency management and task running — no pip, conda, or venv needed. Pixi manages the build toolchain (cmake, ninja, nanobind), the prebuilt tesseract C++ libraries (from the `tesseract-robotics` conda channel), and Python deps in a single lockfile.
 
 ### Prerequisites
 
@@ -112,18 +112,17 @@ curl -fsSL https://pixi.sh/install.sh | bash
 ```bash
 git clone --recurse-submodules https://github.com/tesseract-robotics/tesseract_nanobind.git
 cd tesseract_nanobind
-pixi run build    # builds C++ libs + installs bindings (editable)
+pixi run build    # installs prebuilt C++ libs + builds/installs bindings (editable)
 ```
 
-`pixi run build` chains two steps: `build-cpp` (compiles tesseract C++ via colcon) → `install` (editable pip install of the Python package). First build takes ~15 min; subsequent rebuilds are incremental.
+`pixi run build` resolves the pixi env (which pulls the prebuilt tesseract C++ libs from the `tesseract-robotics` conda channel) and runs `install` (editable pip install of the Python package). Only the nanobind extensions compile locally — no more from-source C++ build.
 
 ### Available tasks
 
 | Task | Description |
 |------|-------------|
-| `pixi run build` | Build C++ libs + install bindings |
-| `pixi run build-cpp` | Build only the C++ libs |
-| `pixi run install` | Editable install (assumes C++ already built) |
+| `pixi run build` | Install C++ libs (conda) + build/install bindings |
+| `pixi run install` | Editable install of the bindings |
 | `pixi run test` | Run pytest with xdist parallelism |
 | `pixi run lint` | Lint with ruff |
 | `pixi run fmt` | Format with ruff |
@@ -156,8 +155,7 @@ This runs ruff + auto-staging on commit, and pyright + pytest on push (configure
 ├── src/tesseract_robotics/   # Python package + C++ extension modules
 ├── tests/                    # pytest suite
 ├── examples/                 # usage examples
-├── ws/                       # C++ workspace (colcon src/ + install/)
-├── scripts/                  # build scripts (build_tesseract_cpp.sh, build_{linux,macos}_wheel.sh)
+├── scripts/                  # build scripts (build_{linux,macos}_wheel.sh)
 └── docs/                     # mkdocs-material documentation
 ```
 

@@ -1,9 +1,16 @@
 #!/bin/bash
-# Source this file to set up the tesseract_python environment
-# Usage: source env.sh
+# Source this file to set the tesseract resource env vars for ad-hoc use
+# (examples, benchmarks) inside an active pixi/conda environment.
+#
+# Usage:
+#   pixi shell            # or: pixi run ...
+#   source scripts/env.sh
+#
+# Note: tesseract_robotics/__init__.py auto-configures these same paths on first
+# import (from $CONDA_PREFIX), so this script is only needed for tooling that reads
+# the env vars before importing the package.
 
-# Get the project root (parent of scripts/)
-# Support both bash and zsh
+# Get the project root (parent of scripts/) — support both bash and zsh
 if [ -n "$BASH_SOURCE" ]; then
     _SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 else
@@ -11,37 +18,35 @@ else
 fi
 SCRIPT_DIR="$( cd "$_SCRIPTS_DIR/.." && pwd )"
 
-# Conda environment
-source /opt/miniconda3/etc/profile.d/conda.sh
-conda activate tesseract_nb
+if [ -z "$CONDA_PREFIX" ]; then
+    echo "❌ No active pixi/conda environment (CONDA_PREFIX unset)."
+    echo "   Run 'pixi shell' (or invoke via 'pixi run ...') first."
+    return 1 2>/dev/null || exit 1
+fi
+
+# The tesseract C++ libs + bundled data come from the tesseract-robotics conda
+# packages installed under $CONDA_PREFIX.
+SHARE_DIR="$CONDA_PREFIX/share"
+LIB_DIR="$CONDA_PREFIX/lib"
 
 # Qt6 cross-compile fix (conda Qt6 needs this on macOS)
 export QT_HOST_PATH=$CONDA_PREFIX
 
-# Library paths
-export DYLD_LIBRARY_PATH="$SCRIPT_DIR/ws/install/lib:$DYLD_LIBRARY_PATH"
-export LD_LIBRARY_PATH="$SCRIPT_DIR/.pixi/envs/default/lib:$LD_LIBRARY_PATH"
-
-# Tesseract resource paths
-export TESSERACT_SUPPORT_DIR="$SCRIPT_DIR/ws/src/tesseract/support"
-export TESSERACT_RESOURCE_PATH="$SCRIPT_DIR/ws/src/tesseract/"
+# Tesseract resource paths (support meshes/URDFs live under share/tesseract/support)
+export TESSERACT_SUPPORT_DIR="$SHARE_DIR/tesseract/support"
+export TESSERACT_RESOURCE_PATH="$SHARE_DIR"
 
 # Task composer config (required for planning examples and tests)
-export TESSERACT_TASK_COMPOSER_DIR="$SCRIPT_DIR/ws/src/tesseract_planning/task_composer"
+export TESSERACT_TASK_COMPOSER_DIR="$SHARE_DIR/tesseract_planning/task_composer"
 export TESSERACT_TASK_COMPOSER_CONFIG_FILE="$TESSERACT_TASK_COMPOSER_DIR/config/task_composer_plugins.yaml"
 # Plugin path for YAML patching (package auto-patches /usr/local/lib -> this path)
-export TESSERACT_PLUGIN_PATH="$SCRIPT_DIR/ws/install/lib"
+export TESSERACT_PLUGIN_PATH="$LIB_DIR"
 
-echo "Environment set up:"
-echo "  DYLD_LIBRARY_PATH includes: $SCRIPT_DIR/ws/install/lib"
-echo "  LD_LIBRARY_PATH includes: $SCRIPT_DIR/.pixi/envs/default/lib"
+echo "Environment set up (from \$CONDA_PREFIX=$CONDA_PREFIX):"
 echo "  TESSERACT_SUPPORT_DIR: $TESSERACT_SUPPORT_DIR"
 echo "  TESSERACT_RESOURCE_PATH: $TESSERACT_RESOURCE_PATH"
+echo "  TESSERACT_TASK_COMPOSER_CONFIG_FILE: $TESSERACT_TASK_COMPOSER_CONFIG_FILE"
+echo "  TESSERACT_PLUGIN_PATH: $TESSERACT_PLUGIN_PATH"
 echo ""
-echo "Run examples:"
-echo "  python $SCRIPT_DIR/examples/puzzle_piece_auxillary_axes_example.py"
-echo "  python $SCRIPT_DIR/examples/freespace_ompl_example.py"
-echo ""
-echo "Run tests:"
-echo "  ./scripts/run_tests.sh"
-
+echo "Run tests:    ./scripts/run_tests.sh"
+echo "Run examples: python examples/freespace_ompl_example.py"

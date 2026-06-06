@@ -18,22 +18,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Python 3.9 REQUIRED COMPONENTS Interpreter Development.Module Development.SABIModule)
 find_package(nanobind CONFIG REQUIRED)
 
-# Add tesseract install path to CMAKE_PREFIX_PATH
-# Use absolute path derived from project source dir
-get_filename_component(TESSERACT_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ws/install" ABSOLUTE)
-list(APPEND CMAKE_PREFIX_PATH "${TESSERACT_INSTALL_DIR}")
-message(STATUS "Added tesseract install dir: ${TESSERACT_INSTALL_DIR}")
-
-# Set RPATH to find tesseract libraries at runtime
-# This embeds the full path to ws/install/lib in the built .so files
-set(CMAKE_INSTALL_RPATH "${TESSERACT_INSTALL_DIR}/lib")
+# The tesseract C++ libs (and every dependency) are provided by the tesseract-robotics
+# conda packages installed under $CONDA_PREFIX; find_package() resolves them via the
+# CMAKE_PREFIX_PATH entry added below. Embed an RPATH to $CONDA_PREFIX/lib so the built
+# extensions locate those libs at runtime for an editable dev install (`pixi run install`).
+# The portable wheel build later rewrites these RPATHs to $ORIGIN and bundles the libs
+# into the wheel (see scripts/build_{linux,macos}_wheel.sh).
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+if(DEFINED ENV{CONDA_PREFIX})
+  set(CMAKE_INSTALL_RPATH "$ENV{CONDA_PREFIX}/lib")
+endif()
 if(APPLE)
   set(CMAKE_MACOSX_RPATH ON)
-  # Also add conda lib for dependencies like boost, tinyxml2
-  if(DEFINED ENV{CONDA_PREFIX})
-    list(APPEND CMAKE_INSTALL_RPATH "$ENV{CONDA_PREFIX}/lib")
-  endif()
 endif()
 
 # Add conda prefix for dependencies (tinyxml2, console_bridge, etc.)
@@ -392,21 +388,18 @@ message(STATUS "nanobind: ${nanobind_VERSION}")
 message(STATUS "===============================================")
 
 # ============== Install Bundled Data Files ==============
-# These are installed into the wheel so env vars can use relative paths
-# Support both:
-#   - Local dev: ws/src/tesseract/... (flat repo layout)
-#   - CI layout: ../tesseract/... (repo cloned to ws/src/tesseract_nanobind)
-
-set(TESSERACT_SUPPORT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/ws/src/tesseract/support")
-if(NOT EXISTS "${TESSERACT_SUPPORT_SRC}")
-  # CI layout: repo at ws/src/tesseract_nanobind, deps at ws/src/tesseract
-  set(TESSERACT_SUPPORT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../tesseract/support")
-endif()
-
-set(TASK_COMPOSER_CFG_SRC "${CMAKE_CURRENT_SOURCE_DIR}/ws/src/tesseract_planning/task_composer/config")
-if(NOT EXISTS "${TASK_COMPOSER_CFG_SRC}")
-  # CI layout
-  set(TASK_COMPOSER_CFG_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../tesseract_planning/task_composer/config")
+# These are installed into the wheel so env vars can use relative paths.
+# The tesseract-robotics conda packages ship them under $CONDA_PREFIX/share:
+#   support meshes/urdfs  -> share/tesseract/support (+ share/tesseract/package.xml)
+#   task_composer config  -> share/tesseract_planning/task_composer/config
+if(DEFINED ENV{CONDA_PREFIX})
+  set(TESSERACT_SUPPORT_SRC "$ENV{CONDA_PREFIX}/share/tesseract/support")
+  set(TASK_COMPOSER_CFG_SRC "$ENV{CONDA_PREFIX}/share/tesseract_planning/task_composer/config")
+  if(WIN32 AND NOT EXISTS "${TESSERACT_SUPPORT_SRC}")
+    # conda on Windows installs data under the Library/ prefix
+    set(TESSERACT_SUPPORT_SRC "$ENV{CONDA_PREFIX}/Library/share/tesseract/support")
+    set(TASK_COMPOSER_CFG_SRC "$ENV{CONDA_PREFIX}/Library/share/tesseract_planning/task_composer/config")
+  endif()
 endif()
 
 if(EXISTS "${TESSERACT_SUPPORT_SRC}")

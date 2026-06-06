@@ -4,27 +4,28 @@ Development scripts for tesseract_python_nanobind.
 
 ## Setup
 
-### `build_tesseract_cpp.sh`
-Builds tesseract C++ libraries using colcon. Run from project root.
-
-```bash
-./scripts/build_tesseract_cpp.sh
-```
+The tesseract C++ libraries are no longer built from source — they come prebuilt
+from the `tesseract-robotics` conda channel (declared in `pyproject.toml`). Just
+`pixi run install` (editable) or `pixi run build-wheel` (portable wheel); pixi
+installs the C++ libs into the env automatically.
 
 ## Development
 
 ### `env.sh`
-Sets environment variables for development. Source before running Python:
+Exports the tesseract resource env vars for ad-hoc tooling. Source it inside an
+active pixi/conda env (`pixi shell`) before running Python. Note: the package
+auto-configures these same paths from `$CONDA_PREFIX` on first import, so this is
+only needed by tools that read the env vars before importing `tesseract_robotics`.
 
 ```bash
 source scripts/env.sh
 ```
 
-Sets:
-- `DYLD_LIBRARY_PATH` - shared library path (required for plugin loading on macOS)
-- `TESSERACT_SUPPORT_DIR` - path to URDF/mesh resources
-- `TESSERACT_RESOURCE_PATH` - resource locator base path
+Sets (all derived from `$CONDA_PREFIX`):
+- `TESSERACT_SUPPORT_DIR` - path to URDF/mesh resources (`share/tesseract/support`)
+- `TESSERACT_RESOURCE_PATH` - resource locator base path (`share/`)
 - `TESSERACT_TASK_COMPOSER_CONFIG_FILE` - task composer plugin config
+- `TESSERACT_PLUGIN_PATH` - plugin factory lib dir (`lib/`)
 
 ### `run_benchmarks.sh`
 Runs all planning benchmarks and shows summary report.

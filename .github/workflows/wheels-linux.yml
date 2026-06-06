@@ -40,7 +40,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { python: '3.9',  arch: x64,     runner: ubuntu-22.04 }
           - { python: '3.10', arch: x64,     runner: ubuntu-22.04 }
           - { python: '3.11', arch: x64,     runner: ubuntu-22.04 }
           - { python: '3.12', arch: x64,     runner: ubuntu-22.04 }
@@ -51,52 +50,30 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        path: ws/src/tesseract_nanobind
+        path: tesseract_nanobind
         fetch-depth: 0  # setuptools-scm needs tag history for version derivation
+    # pixi installs the tesseract C++ libs from the tesseract-robotics conda channel
+    # (no more vcstool import / colcon build) — build-wheel links + bundles them.
     - name: setup pixi
       uses: prefix-dev/setup-pixi@v0.8.0
       env:
-        PIXI_ENV: py${{ matrix.python == '3.9' && '39' || matrix.python == '3.10' && '310' || matrix.python == '3.11' && '311' || '312' }}
+        PIXI_ENV: py${{ matrix.python == '3.10' && '310' || matrix.python == '3.11' && '311' || '312' }}
       with:
-        manifest-path: ws/src/tesseract_nanobind/pyproject.toml
+        manifest-path: tesseract_nanobind/pyproject.toml
         cache: true
         environments: ${{ env.PIXI_ENV }}
         activate-environment: ${{ env.PIXI_ENV }}
     - name: typecheck
-      working-directory: ws/src/tesseract_nanobind
+      working-directory: tesseract_nanobind
       run: pixi run typecheck
-    - name: cache vcs repos
-      uses: actions/cache@v4
-      with:
-        path: |
-          ws/src/tesseract
-          ws/src/tesseract_planning
-          ws/src/trajopt
-          ws/src/descartes_light
-          ws/src/opw_kinematics
-          ws/src/ruckig
-        key: vcs-${{ hashFiles('ws/src/tesseract_nanobind/dependencies.repos') }}
-    - name: vcs import
-      working-directory: ws/src
-      run: vcs import --input tesseract_nanobind/dependencies.repos --skip-existing
-    - name: cache colcon build
-      uses: actions/cache@v4
-      id: colcon-cache
-      with:
-        path: ws/install
-        key: colcon-linux-v12-${{ matrix.arch }}-py${{ matrix.python }}-${{ hashFiles('ws/src/tesseract_nanobind/dependencies.repos', 'ws/src/tesseract_nanobind/pyproject.toml') }}
-    - name: build C++ deps
-      if: steps.colcon-cache.outputs.cache-hit != 'true'
-      working-directory: ws/src/tesseract_nanobind
-      run: pixi run build-cpp
     - name: build wheel
-      working-directory: ws/src/tesseract_nanobind
+      working-directory: tesseract_nanobind
       run: pixi run build-wheel
     - name: archive wheels
       uses: actions/upload-artifact@v4
       with:
         name: python-${{ matrix.python }}-linux-${{ matrix.arch }}
-        path: ws/src/tesseract_nanobind/wheelhouse/tesseract*.whl
+        path: tesseract_nanobind/wheelhouse/tesseract*.whl
     - name: archive logs
       if: failure()
       uses: actions/upload-artifact@v4
@@ -113,7 +90,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { python: '3.9',  wheel: '3.9',  arch: x64,   runner: ubuntu-24.04,     continue_on_error: true }
           - { python: '3.12', wheel: '3.12', arch: x64,   runner: ubuntu-24.04,     continue_on_error: false }
           - { python: '3.12', wheel: '3.12', arch: aarch64, runner: ubuntu-24.04-arm, continue_on_error: false }
           - { python: '3.13', wheel: '3.12', arch: x64,   runner: ubuntu-24.04,     continue_on_error: false }

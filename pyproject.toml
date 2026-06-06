@@ -10,9 +10,11 @@ build-backend = "scikit_build_core.build"
 name = "tesseract-robotics-nanobind"
 description = "Tesseract robotics Python bindings (nanobind)"
 readme = "README.md"
-# we're keeping 3.9, since that's the python version that Rhino 8 uses
-# this is in the interest of supporting the compas.dev community
-requires-python = ">=3.9"
+# Floor is 3.10: the tesseract C++ libs now come from the tesseract-robotics conda
+# channel, whose pcl→vtk dependency closure has no cp39 build, so a 3.9 build env
+# (and the from-source cp39 wheel it produced) is no longer possible. The shipped
+# cp312-abi3 wheels already required ≥3.12 at install time regardless.
+requires-python = ">=3.10"
 # Runtime dependencies - keep in sync with requirements.txt
 dependencies = [
     "numpy>=1.21.0",
@@ -36,7 +38,6 @@ classifiers = [
     # "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python",
     # "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -139,11 +140,14 @@ quote-style = "double"
 
 [tool.pixi.workspace]
 name = "tesseract_robotics_dev"
-channels = ["conda-forge"]
+# tesseract-robotics ships the prebuilt tesseract C++ libs + CMake configs (v0.35.0,
+# all four platforms); conda-forge stays highest-priority so common deps (boost, eigen,
+# ompl, …) resolve from there exactly as the tesseract feedstocks were built against.
+channels = ["conda-forge", "tesseract-robotics"]
 platforms = ["osx-arm64", "linux-64", "win-64", "linux-aarch64"]
 
 [tool.pixi.dependencies]
-python = ">=3.9"
+python = ">=3.10"  # conda tesseract stack (pcl→vtk) has no cp39 build
 
 # Build tools
 cmake = ">=3.15,<4"
@@ -152,28 +156,18 @@ make = "*"
 pkg-config = "*"
 git = "*"  # needed by setuptools-scm for version derivation; CI pixi envs don't see system git
 
-# C++ dependencies - pinned for C++17 compatibility and API stability
-eigen = ">=3.3,<3.5"
-boost-cpp = ">=1.70,<2"
-console_bridge = ">=1.0,<2"
-assimp = ">=5.0,<6"
-urdfdom = ">=3.0,<5"
-octomap = ">=1.9,<2"
-orocos-kdl = ">=1.4,<2"
-flann = ">=1.9,<2"
-jsoncpp = ">=1.9,<2"
-yaml-cpp = ">=0.6,<1"
-tinyxml2 = ">=10,<11"
-bullet-cpp = ">=3.21,<4"
-fcl = ">=0.7,<1"
-ompl = ">=1.5,<2"
-pcl = ">=1.12,<2"
-ipopt = ">=3.14,<4"
-gtest = ">=1.10,<2"
-qpoases = ">=3.2,<4"
-cereal = ">=1.3,<2"          # 0.34 serialization (Boost → Cereal)
-taskflow = ">=3.6,<3.8"     # 3.8+ requires C++20
-llvm-openmp = ">=14,<20"
+# Prebuilt tesseract C++ libs (CMake configs + headers + .so/.dylib) from the
+# tesseract-robotics conda channel. These replace the from-source colcon build:
+# every C++ dependency (boost, eigen, ompl, bullet, fcl, taskflow, …) now arrives
+# transitively as a run/host dep of these packages, matched to how the feedstocks
+# were built. Pinned to 0.35.0 to track the version this binding set targets.
+tesseract-robotics = "==0.35.0"
+tesseract-robotics-planning = "==0.35.0"
+# trajopt, descartes-light, and every C++ dependency (boost, eigen, ompl, bullet, …)
+# arrive transitively, matched to how the feedstocks were built. Don't pin them here:
+# tesseract-robotics 0.35.0 was rebuilt against conda-forge's eigen 5.0.1
+# (eigen-abi >=5.0.1.100), so an explicit `eigen <3.5` or `trajopt = "*"` deadlocks
+# the solve. Let the tesseract packages drive the resolution.
 
 # Python build deps
 pip = "*"
@@ -199,12 +193,10 @@ patchelf = "*"
 patchelf = "*"
 
 [tool.pixi.pypi-dependencies]
-# Note: tesseract-robotics-nanobind NOT here - use `pixi run install` (chains build-cpp -> pip install)
+# Note: tesseract-robotics-nanobind NOT here - use `pixi run install` (pip install -e .)
 numpy = ">=1.21.0"
 loguru = ">=0.7.0"
 scipy = ">=1.7.0"              # Required for nanobind Eigen sparse matrix conversion
-colcon-common-extensions = "*"
-vcstool = "*"
 
 # Docs
 mkdocs-material = ">=9.0"
@@ -225,14 +217,11 @@ test-benchmark = { cmd = "python -m pytest tests/benchmarks -x -q", depends-on =
 lint = "ruff check ."
 fmt = "ruff format ."
 typecheck = { cmd = "pyright src/tesseract_robotics", description = "Type check with pyright" }
-build-cpp = { cmd = "bash scripts/build_tesseract_cpp.sh", description = "Build tesseract C++ libs" }
 build-wheel = { cmd = "bash scripts/build_linux_wheel.sh", description = "Build portable manylinux wheel (patchelf + plugins + YAML patch). macOS overrides this via the osx-arm64 target." }
-install = { cmd = "pip install -e . --no-build-isolation", depends-on = [
-    "build-cpp",
-], description = "Install package (editable)" }
+install = { cmd = "pip install -e . --no-build-isolation", description = "Install bindings (editable); C++ libs come from the tesseract-robotics conda packages" }
 build = { depends-on = [
     "install",
-], description = "Build C++ libs + install bindings" }
+], description = "Install bindings against the conda tesseract C++ libs" }
 docs = { cmd = "mkdocs serve --dev-addr=localhost:8000 --open", description = "Live docs server with auto-reload" }
 docs-build = { cmd = "mkdocs build", description = "Build static docs to site/" }
 
@@ -244,9 +233,6 @@ build-wheel = { cmd = "zsh scripts/build_macos_wheel.sh", description = "Build p
 
 
 # Python version features for CI matrix builds
-[tool.pixi.feature.py39.dependencies]
-python = "3.9.*"
-
 [tool.pixi.feature.py310.dependencies]
 python = "3.10.*"
 
@@ -258,7 +244,6 @@ python = "3.12.*"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-py39 = { features = ["py39"], solve-group = "py39" }
 py310 = { features = ["py310"], solve-group = "py310" }
 py311 = { features = ["py311"], solve-group = "py311" }
 py312 = { features = ["py312"], solve-group = "py312" }

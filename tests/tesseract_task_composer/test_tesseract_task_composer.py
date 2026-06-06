@@ -25,14 +25,14 @@ def _resolve_task_composer_config():
     if pkg_config.is_file():
         return str(pkg_config)
 
-    test_dir = Path(__file__).parent.resolve()
-    repo_root = test_dir.parent.parent
-    ws_config = (
-        repo_root
-        / "ws/src/tesseract_planning/tesseract_task_composer/config/task_composer_plugins.yaml"
-    )
-    if ws_config.is_file():
-        return str(ws_config)
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    if conda_prefix:
+        ws_config = (
+            Path(conda_prefix)
+            / "share/tesseract_planning/task_composer/config/task_composer_plugins.yaml"
+        )
+        if ws_config.is_file():
+            return str(ws_config)
 
     return None
 
@@ -58,17 +58,16 @@ class TestTaskComposerPluginFactory:
             if pkg_config.is_file():
                 config_file = str(pkg_config)
 
-        # 3. Try workspace config (editable install)
+        # 3. Editable install: config ships with the tesseract-robotics conda pkg
         if not config_file:
-            # Navigate from test file to repo root
-            test_dir = Path(__file__).parent.resolve()
-            repo_root = test_dir.parent.parent  # tests/tesseract_task_composer -> repo root
-            ws_config = (
-                repo_root
-                / "ws/src/tesseract_planning/tesseract_task_composer/config/task_composer_plugins.yaml"
-            )
-            if ws_config.is_file():
-                config_file = str(ws_config)
+            conda_prefix = os.environ.get("CONDA_PREFIX")
+            if conda_prefix:
+                ws_config = (
+                    Path(conda_prefix)
+                    / "share/tesseract_planning/task_composer/config/task_composer_plugins.yaml"
+                )
+                if ws_config.is_file():
+                    config_file = str(ws_config)
 
         assert config_file and Path(config_file).is_file(), (
             "No task composer config found. Tried env var, package config, and workspace"
@@ -153,14 +152,14 @@ class TestTaskComposerPluginFactory:
                 config_file = str(pkg_config)
 
         if not config_file:
-            test_dir = Path(__file__).parent.resolve()
-            repo_root = test_dir.parent.parent  # tests/tesseract_task_composer -> repo root
-            ws_config = (
-                repo_root
-                / "ws/src/tesseract_planning/tesseract_task_composer/config/task_composer_plugins.yaml"
-            )
-            if ws_config.is_file():
-                config_file = str(ws_config)
+            conda_prefix = os.environ.get("CONDA_PREFIX")
+            if conda_prefix:
+                ws_config = (
+                    Path(conda_prefix)
+                    / "share/tesseract_planning/task_composer/config/task_composer_plugins.yaml"
+                )
+                if ws_config.is_file():
+                    config_file = str(ws_config)
 
         assert config_file and Path(config_file).is_file(), "No task composer config found"
 
