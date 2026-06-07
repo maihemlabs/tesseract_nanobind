@@ -16,6 +16,7 @@ Priority: Bundled data (installed) > Dev workspace (editable) > User env vars
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import os
@@ -25,6 +26,24 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from loguru import logger
+
+# Linux: preload the bundled libstdc++ BEFORE anything can pull in the system one.
+# (Everything imported above this point is stdlib or pure python — no libstdc++.)
+#
+# The wheels bundle libstdc++.so.6 (the prebuilt tesseract conda libs are built with
+# gcc 13/14 and need GLIBCXX > what e.g. ubuntu 22.04 ships), but numpy/scipy link
+# the SYSTEM libstdc++ (manylinux-whitelisted, never vendored). ld.so dedupes by
+# SONAME: whichever copy enters the link map first serves every later request. If
+# numpy loads first on an old distro, our libs bind to the too-old system copy and
+# die with "GLIBCXX_3.4.31 not found" (GH #35). Loading our newer copy RTLD_GLOBAL
+# here wins the race for any process that imports tesseract_robotics before numpy —
+# libstdc++ is forward-compatible, so numpy/scipy are happy binding to it. No-op for
+# editable installs (no bundled copy) and for processes where numpy already won
+# (unchanged from today's behavior).
+if sys.platform == "linux":
+    _bundled_libstdcxx = Path(__file__).parent / "libstdc++.so.6"
+    if _bundled_libstdcxx.is_file():
+        ctypes.CDLL(str(_bundled_libstdcxx), mode=ctypes.RTLD_GLOBAL)
 
 # Windows: extend the DLL search path before any C extension import.
 #
