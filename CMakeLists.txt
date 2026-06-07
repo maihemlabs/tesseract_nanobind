@@ -19,31 +19,43 @@ find_package(Python 3.9 REQUIRED COMPONENTS Interpreter Development.Module Devel
 find_package(nanobind CONFIG REQUIRED)
 
 # The tesseract C++ libs (and every dependency) are provided by the tesseract-robotics
-# conda packages installed under $CONDA_PREFIX; find_package() resolves them via the
-# CMAKE_PREFIX_PATH entry added below. Embed an RPATH to $CONDA_PREFIX/lib so the built
-# extensions locate those libs at runtime for an editable dev install (`pixi run install`).
-# The portable wheel build later rewrites these RPATHs to $ORIGIN and bundles the libs
-# into the wheel (see scripts/build_{linux,macos}_wheel.sh).
+# conda packages installed under the C++ prefix; find_package() resolves them via the
+# CMAKE_PREFIX_PATH entry added below. Normally that prefix IS the active env
+# ($CONDA_PREFIX), but the cp39 wheel build (Rhino 8) splits them: the pcl→vtk closure
+# of the tesseract conda packages has no cp39 builds, so python 3.9 lives in a minimal
+# py39 env while the C++ stack comes from the py312 env, pointed to via
+# $TESSERACT_CPP_PREFIX. Precedence: TESSERACT_CPP_PREFIX, else CONDA_PREFIX.
+# (Non-empty checks, not DEFINED: CI exports the var as "" on non-3.9 jobs.)
+if(NOT "$ENV{TESSERACT_CPP_PREFIX}" STREQUAL "")
+  set(TESSERACT_CPP_PREFIX "$ENV{TESSERACT_CPP_PREFIX}")
+elseif(NOT "$ENV{CONDA_PREFIX}" STREQUAL "")
+  set(TESSERACT_CPP_PREFIX "$ENV{CONDA_PREFIX}")
+endif()
+
+# Embed an RPATH to <cpp-prefix>/lib so the built extensions locate the tesseract libs
+# at runtime for an editable dev install (`pixi run install`). The portable wheel build
+# later rewrites these RPATHs to $ORIGIN and bundles the libs into the wheel
+# (see scripts/build_{linux,macos}_wheel.sh).
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-if(DEFINED ENV{CONDA_PREFIX})
-  set(CMAKE_INSTALL_RPATH "$ENV{CONDA_PREFIX}/lib")
+if(DEFINED TESSERACT_CPP_PREFIX)
+  set(CMAKE_INSTALL_RPATH "${TESSERACT_CPP_PREFIX}/lib")
 endif()
 if(APPLE)
   set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-# Add conda prefix for dependencies (tinyxml2, console_bridge, etc.)
-if(DEFINED ENV{CONDA_PREFIX})
-  list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
-  link_directories("$ENV{CONDA_PREFIX}/lib")
-  if(WIN32 AND IS_DIRECTORY "$ENV{CONDA_PREFIX}/Library")
-    list(APPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}/Library")
-    link_directories("$ENV{CONDA_PREFIX}/Library/lib")
-    message(STATUS "Added conda Windows library prefix: $ENV{CONDA_PREFIX}/Library")
+# Add the C++ prefix for dependencies (tinyxml2, console_bridge, etc.)
+if(DEFINED TESSERACT_CPP_PREFIX)
+  list(APPEND CMAKE_PREFIX_PATH "${TESSERACT_CPP_PREFIX}")
+  link_directories("${TESSERACT_CPP_PREFIX}/lib")
+  if(WIN32 AND IS_DIRECTORY "${TESSERACT_CPP_PREFIX}/Library")
+    list(APPEND CMAKE_PREFIX_PATH "${TESSERACT_CPP_PREFIX}/Library")
+    link_directories("${TESSERACT_CPP_PREFIX}/Library/lib")
+    message(STATUS "Added conda Windows library prefix: ${TESSERACT_CPP_PREFIX}/Library")
   endif()
   # Qt6 requires QT_HOST_PATH on macOS with conda
-  set(QT_HOST_PATH "$ENV{CONDA_PREFIX}" CACHE PATH "Qt host path for cross-compilation")
-  message(STATUS "Added conda prefix: $ENV{CONDA_PREFIX}")
+  set(QT_HOST_PATH "${TESSERACT_CPP_PREFIX}" CACHE PATH "Qt host path for cross-compilation")
+  message(STATUS "Added tesseract C++ prefix: ${TESSERACT_CPP_PREFIX}")
 endif()
 
 # Find tesseract C++ libraries
@@ -389,16 +401,18 @@ message(STATUS "===============================================")
 
 # ============== Install Bundled Data Files ==============
 # These are installed into the wheel so env vars can use relative paths.
-# The tesseract-robotics conda packages ship them under $CONDA_PREFIX/share:
+# The tesseract-robotics conda packages ship them under <cpp-prefix>/share:
 #   support meshes/urdfs  -> share/tesseract/support (+ share/tesseract/package.xml)
 #   task_composer config  -> share/tesseract_planning/task_composer/config
-if(DEFINED ENV{CONDA_PREFIX})
-  set(TESSERACT_SUPPORT_SRC "$ENV{CONDA_PREFIX}/share/tesseract/support")
-  set(TASK_COMPOSER_CFG_SRC "$ENV{CONDA_PREFIX}/share/tesseract_planning/task_composer/config")
+# TESSERACT_CPP_PREFIX (set above) is the active env, or the py312 env when
+# cross-building the cp39 wheel.
+if(DEFINED TESSERACT_CPP_PREFIX)
+  set(TESSERACT_SUPPORT_SRC "${TESSERACT_CPP_PREFIX}/share/tesseract/support")
+  set(TASK_COMPOSER_CFG_SRC "${TESSERACT_CPP_PREFIX}/share/tesseract_planning/task_composer/config")
   if(WIN32 AND NOT EXISTS "${TESSERACT_SUPPORT_SRC}")
     # conda on Windows installs data under the Library/ prefix
-    set(TESSERACT_SUPPORT_SRC "$ENV{CONDA_PREFIX}/Library/share/tesseract/support")
-    set(TASK_COMPOSER_CFG_SRC "$ENV{CONDA_PREFIX}/Library/share/tesseract_planning/task_composer/config")
+    set(TESSERACT_SUPPORT_SRC "${TESSERACT_CPP_PREFIX}/Library/share/tesseract/support")
+    set(TASK_COMPOSER_CFG_SRC "${TESSERACT_CPP_PREFIX}/Library/share/tesseract_planning/task_composer/config")
   endif()
 endif()
 

@@ -10,11 +10,12 @@ build-backend = "scikit_build_core.build"
 name = "tesseract-robotics-nanobind"
 description = "Tesseract robotics Python bindings (nanobind)"
 readme = "README.md"
-# Floor is 3.10: the tesseract C++ libs now come from the tesseract-robotics conda
-# channel, whose pcl→vtk dependency closure has no cp39 build, so a 3.9 build env
-# (and the from-source cp39 wheel it produced) is no longer possible. The shipped
-# cp312-abi3 wheels already required ≥3.12 at install time regardless.
-requires-python = ">=3.10"
+# Floor is 3.9 for Rhino 8 (embeds CPython 3.9; cp39 wheels ship for macOS + Windows,
+# the platforms Rhino runs on). The tesseract C++ conda packages can't co-install with
+# python 3.9 (their pcl→vtk closure has no cp39 builds), so cp39 wheels are built from
+# the minimal py39 pixi env against the py312 env's C++ stack via TESSERACT_CPP_PREFIX
+# (see [tool.pixi.feature.py39] below and the wheels workflows).
+requires-python = ">=3.9"
 # Runtime dependencies - keep in sync with requirements.txt
 dependencies = [
     "numpy>=1.21.0",
@@ -38,6 +39,7 @@ classifiers = [
     # "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python",
     # "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",   # Rhino 8 (macOS + Windows wheels)
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -113,10 +115,9 @@ local_scheme = "no-local-version"
 [tool.scikit-build.cmake.define]
 CMAKE_POLICY_DEFAULT_CMP0135 = "NEW"
 
-# Note: cibuildwheel is not used because this package requires
-# pre-built tesseract C++ libraries. See .github/workflows/wheels-linux.yml
-# and .github/workflows/wheels-macos.yml for the custom CI that builds
-# C++ deps first via colcon.
+# Note: cibuildwheel is not used because this package links the prebuilt
+# tesseract C++ conda packages. See .github/workflows/wheels-{linux,macos,windows}.yml
+# for the custom CI that installs them via pixi and bundles them into the wheels.
 
 [tool.ruff]
 target-version = "py39"
@@ -242,8 +243,33 @@ python = "3.11.*"
 [tool.pixi.feature.py312.dependencies]
 python = "3.12.*"
 
+# Rhino 8 embeds CPython 3.9, so cp39 wheels stay on the menu (macOS + Windows, the
+# platforms Rhino runs on). The tesseract C++ conda stack can't co-install with
+# python 3.9 (pcl→vtk has no cp39 builds), so this feature carries ONLY the 3.9
+# interpreter + wheel build tooling and is used with no-default-feature. The C++ libs
+# come from the py312 env via TESSERACT_CPP_PREFIX (CMakeLists.txt + build scripts).
+# scikit-build-core/nanobind from PyPI: conda-forge stopped producing cp39 builds.
+[tool.pixi.feature.py39.dependencies]
+python = "3.9.*"
+pip = "*"
+cmake = ">=3.15,<4"
+ninja = "*"
+git = "*" # setuptools-scm version derivation
+
+[tool.pixi.feature.py39.pypi-dependencies]
+scikit-build-core = ">=0.10,<1"
+nanobind = ">=1.3.2,<3"
+setuptools-scm = ">=8"
+
+# build-wheel for the cp39 cross-build (tasks live in features; a no-default-feature
+# env doesn't inherit the default build-wheel task). Same scripts as the default task —
+# they pick up TESSERACT_CPP_PREFIX from the environment.
+[tool.pixi.feature.py39.target.osx-arm64.tasks]
+build-wheel = { cmd = "zsh scripts/build_macos_wheel.sh", description = "Build portable cp39 macOS wheel against TESSERACT_CPP_PREFIX" }
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
+py39 = { features = ["py39"], no-default-feature = true, solve-group = "py39" }
 py310 = { features = ["py310"], solve-group = "py310" }
 py311 = { features = ["py311"], solve-group = "py311" }
 py312 = { features = ["py312"], solve-group = "py312" }
