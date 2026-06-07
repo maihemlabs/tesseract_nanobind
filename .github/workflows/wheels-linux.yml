@@ -59,8 +59,14 @@ jobs:
       env:
         PIXI_ENV: py${{ matrix.python == '3.10' && '310' || matrix.python == '3.11' && '311' || '312' }}
       with:
+        pixi-version: v0.70.1
         manifest-path: tesseract_nanobind/pyproject.toml
         cache: true
+        # Fail loudly if pixi.lock drifts from pyproject.toml instead of silently
+        # re-solving: a stale lock froze the mid-eigen-5-migration snapshot that
+        # shipped ABI-corrupted wheels (orocos-kdl built against Eigen 3.4 mixed
+        # with Eigen-5 tesseract libs → heap corruption in every KDL code path).
+        locked: true
         environments: ${{ env.PIXI_ENV }}
         activate-environment: ${{ env.PIXI_ENV }}
     - name: typecheck
@@ -69,6 +75,15 @@ jobs:
     - name: build wheel
       working-directory: tesseract_nanobind
       run: pixi run build-wheel
+    # ABI canary: install the just-built wheel into the pixi env and run the
+    # kinematics tests against it. KDL jacobians cross the binding↔lib Eigen
+    # boundary, so dep-set ABI rot (the eigen-5 lock incident) aborts here in
+    # ~30s instead of surfacing as scattered segfaults in test-wheel 15 min later.
+    - name: wheel ABI canary (kinematics)
+      working-directory: tesseract_nanobind
+      run: |
+        pixi run pip install --force-reinstall --no-deps wheelhouse/tesseract*.whl
+        pixi run python -m pytest tests/tesseract_kinematics -x -q
     - name: archive wheels
       uses: actions/upload-artifact@v4
       with:
