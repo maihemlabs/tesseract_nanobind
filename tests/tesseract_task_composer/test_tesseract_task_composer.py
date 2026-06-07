@@ -274,9 +274,7 @@ class TestAnyPolyDataStorage:
         ds = createTaskComposerDataStorage()
         ds.setName("sub_storage")
 
-        recovered = AnyPoly_as_TaskComposerDataStorage(
-            AnyPoly_wrap_TaskComposerDataStorage(ds)
-        )
+        recovered = AnyPoly_as_TaskComposerDataStorage(AnyPoly_wrap_TaskComposerDataStorage(ds))
         assert recovered is not None
         assert recovered.getName() == "sub_storage"
 
@@ -309,9 +307,7 @@ class TestAnyPolyDataStorage:
         parent.setData(fake_uuid, AnyPoly_wrap_TaskComposerDataStorage(sub_storage))
 
         recovered_sub = AnyPoly_as_TaskComposerDataStorage(parent.getData(fake_uuid))
-        recovered_program = AnyPoly_as_CompositeInstruction(
-            recovered_sub.getData("input_data")
-        )
+        recovered_program = AnyPoly_as_CompositeInstruction(recovered_sub.getData("input_data"))
         assert recovered_program.getProfile() == "DENSIFIED"
 
     def test_unwrap_null_anypoly_raises(self):
@@ -490,9 +486,7 @@ class TestPipelineDataStorageExposure:
         del composer
         gc.collect()
 
-    def test_discrete_contact_check_data_storage_yields_contact_results(
-        self, pipeline_run
-    ):
+    def test_discrete_contact_check_data_storage_yields_contact_results(self, pipeline_run):
         """DiscreteContactCheckTask, on a colliding trajectory, stores the per-step
         results under 'contact_results' on its node info's data_storage;
         AnyPoly_as_ContactResultMapVector unwraps that to list[ContactResultMap]."""

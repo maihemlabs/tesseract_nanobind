@@ -143,7 +143,11 @@ def _configure_environment():
             conda_share = alt
     ws_support = (conda_share / "tesseract" / "support") if conda_share else pkg_dir / "_no_dev"
     ws_resource = (conda_share / "tesseract") if conda_share else pkg_dir / "_no_dev"
-    ws_composer = (conda_share / "tesseract_planning" / "task_composer") if conda_share else pkg_dir / "_no_dev"
+    ws_composer = (
+        (conda_share / "tesseract_planning" / "task_composer")
+        if conda_share
+        else pkg_dir / "_no_dev"
+    )
     ws_config = ws_composer / "config" / "task_composer_plugins.yaml"
 
     # TESSERACT_SUPPORT_DIR: path to tesseract_support (bundled or dev)
