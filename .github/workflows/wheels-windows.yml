@@ -286,17 +286,16 @@ jobs:
         python -c "from tesseract_robotics import trajopt_ifopt; print('trajopt_ifopt OK')"
 
     - name: run tests
-      # kinematics + examples were skipped here since the colcon era ("plugin
-      # loading requires the full development environment"). That rationale
-      # predates delvewheel --analyze-existing, the PATH-prepend fix, and the
-      # uniform conda plugin DLLs — windows is rhino's primary platform, so
-      # these suites are core product coverage, not optional. Only
-      # time_parameterization stays excluded (tracked separately).
+      # Full suite, benchmarks excepted — same scope as linux/macos test-wheel.
+      # kinematics/examples/time_parameterization were skipped here since the
+      # colcon era ("plugin loading requires the full development environment");
+      # that rationale predates delvewheel --analyze-existing, the PATH-prepend
+      # fix, and the uniform conda plugin DLLs. Windows is rhino's primary
+      # platform: this is core product coverage, not optional.
       run: |
         source test_env/Scripts/activate
         cd tesseract_nanobind
         pytest tests -n auto \
-          --ignore=tests/tesseract_time_parameterization \
           --ignore=tests/benchmarks \
           -v --tb=short
 
