@@ -40,7 +40,12 @@ from loguru import logger
 # libstdc++ is forward-compatible, so numpy/scipy are happy binding to it. No-op for
 # editable installs (no bundled copy) and for processes where numpy already won
 # (unchanged from today's behavior).
-if sys.platform == "linux":
+#
+# Conda envs are excluded: there the env's own libstdc++ is canonical and already
+# new enough (the C++ stack comes from the same solve), and force-loading a second
+# copy RTLD_GLOBAL alongside it segfaulted the wheel-in-pixi-env ABI canary on
+# aarch64. The rescue is only for non-conda hosts (bare venvs, system python, Rhino).
+if sys.platform == "linux" and "CONDA_PREFIX" not in os.environ:
     _bundled_libstdcxx = Path(__file__).parent / "libstdc++.so.6"
     if _bundled_libstdcxx.is_file():
         ctypes.CDLL(str(_bundled_libstdcxx), mode=ctypes.RTLD_GLOBAL)
