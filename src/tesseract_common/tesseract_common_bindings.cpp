@@ -9,16 +9,19 @@ using VectorVector3d = tesseract::common::VectorVector3d;  // std::vector<Eigen:
 using VectorIsometry3d = tesseract::common::VectorIsometry3d;  // std::vector<Eigen::Isometry3d>
 NB_MAKE_OPAQUE(VectorVector3d)
 NB_MAKE_OPAQUE(VectorIsometry3d)
-#include <tesseract/common/resource_locator.h>
-#include <tesseract/common/manipulator_info.h>
-#include <tesseract/common/joint_state.h>
-#include <tesseract/common/collision_margin_data.h>
 #include <tesseract/common/allowed_collision_matrix.h>
+#include <tesseract/common/collision_margin_data.h>
 #include <tesseract/common/contact_allowed_validator.h>
+#include <tesseract/common/joint_state.h>
 #include <tesseract/common/kinematic_limits.h>
+#include <tesseract/common/manipulator_info.h>
 #include <tesseract/common/plugin_info.h>
 #include <yaml-cpp/yaml.h>  // YAML::Load / YAML::Node for PluginInfo.config <-> str
+#include <tesseract/common/resource_locator.h>
+#include <algorithm>
+#include <boost/uuid/uuid.hpp>
 #include <cmath>
+#include <cstring>
 #include <filesystem>
 #include <sstream>
 
@@ -811,6 +814,31 @@ NB_MODULE(_tesseract_common, m) {
         .def_rw("acceleration", &tesseract::common::JointState::acceleration)
         .def_rw("effort", &tesseract::common::JointState::effort)
         .def_rw("time", &tesseract::common::JointState::time);
+
+    // ========== JointTrajectory ==========
+    nb::class_<tesseract::common::JointTrajectory>(m, "JointTrajectory")
+        .def(nb::init<std::string>(), "description"_a = "")
+        .def(nb::init<std::vector<tesseract::common::JointState>, std::string>(),
+             "states"_a, "description"_a = "")
+        .def_rw("states", &tesseract::common::JointTrajectory::states)
+        .def_rw("description", &tesseract::common::JointTrajectory::description)
+        // uuid exposed as 16 raw bytes for parity with C++; rclpy's wire format treats it
+        // the same way. Construct on the Python side via bytes(16) when not round-tripping.
+        .def_prop_rw("uuid",
+            [](tesseract::common::JointTrajectory const& self) {
+              return nb::bytes(reinterpret_cast<const char*>(self.uuid.begin()), self.uuid.size());
+            },
+            [](tesseract::common::JointTrajectory& self, nb::bytes const& b) {
+              if (b.size() != 16)
+                throw std::invalid_argument("uuid must be exactly 16 bytes");
+              std::memcpy(self.uuid.begin(), b.c_str(), 16);
+            })
+        .def("__len__", &tesseract::common::JointTrajectory::size)
+        .def("__iter__",
+             [](tesseract::common::JointTrajectory& self) {
+               return nb::make_iterator(nb::type<tesseract::common::JointTrajectory>(),
+                                        "iterator", self.begin(), self.end());
+             }, nb::keep_alive<0, 1>());
 
     // ========== AllowedCollisionMatrix ==========
     nb::class_<tesseract::common::AllowedCollisionMatrix>(m, "AllowedCollisionMatrix")
