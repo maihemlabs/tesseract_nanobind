@@ -18,10 +18,14 @@
 #include <tesseract/common/profile_dictionary.h>
 
 // tesseract_motion_planners OMPL
+#include <ompl/geometric/SimpleSetup.h>
 #include <tesseract/motion_planners/ompl/ompl_motion_planner.h>
 #include <tesseract/motion_planners/ompl/ompl_planner_configurator.h>
 #include <tesseract/motion_planners/ompl/ompl_solver_config.h>
 #include <tesseract/motion_planners/ompl/profile/ompl_real_vector_move_profile.h>
+#include <tesseract/motion_planners/ompl/state_collision_validator.h>
+#include <tesseract/motion_planners/ompl/continuous_motion_validator.h>
+#include <tesseract/motion_planners/ompl/discrete_motion_validator.h>
 
 // tesseract_collision for CollisionCheckConfig
 #include <tesseract/collision/types.h>
@@ -172,4 +176,78 @@ NB_MODULE(_tesseract_motion_planners_ompl, m) {
           "Get the first seed used by OMPL's RNG seed generator.\n\n"
           "Log this value to make a stochastic planning failure reproducible by passing\n"
           "it to RNG_setSeed in a subsequent run.");
+
+    
+    // ========== OMPLRealVectorDualMarginMoveProfile ==========
+    // OMPLRealVectorMoveProfile variant that decouples the collision margin used for path
+    // *routing* from the margin used for start/goal *admission*.
+    //
+    // The base profile uses a single contact_manager_config for both purposes:
+    //   - start/goal admission: applied to the discrete contact checker inside createSimpleSetup()
+    //   - routing: createCollisionStateValidator() (DISCRETE) / createMotionValidator() (CONTINUOUS)
+    //
+    // This subclass overrides only the routing validators so they use routing_contact_manager_config,
+    // leaving the inherited contact_manager_config to govern start/goal admission. That lets a caller
+    // admit a tight-clearance goal at its true margin while routing with an inflated margin to avoid
+    // mid-transit wall-hugging. No tesseract core change is needed: the base createSimpleSetup() runs
+    // unchanged and dispatches to these overrides through the virtual table.
+    class OMPLRealVectorDualMarginMoveProfile : public tp::OMPLRealVectorMoveProfile
+    {
+    public:
+      /** @brief Contact manager config used for routing (edge / state collision checks). */
+      tesseract::collision::ContactManagerConfig routing_contact_manager_config;
+
+    protected:
+      std::unique_ptr<ompl::base::StateValidityChecker>
+      createCollisionStateValidator(const ompl::geometric::SimpleSetup& simple_setup,
+                                    const std::shared_ptr<const tesseract::environment::Environment>& env,
+                                    const std::shared_ptr<const tesseract::kinematics::JointGroup>& manip,
+                                    const tp::OMPLStateExtractor& state_extractor) const override
+      {
+        if (collision_check_config.type == tesseract::collision::CollisionEvaluatorType::DISCRETE ||
+            collision_check_config.type == tesseract::collision::CollisionEvaluatorType::LVS_DISCRETE)
+        {
+          return std::make_unique<tp::StateCollisionValidator>(
+              simple_setup.getSpaceInformation(), *env, manip, routing_contact_manager_config, state_extractor);
+        }
+        return nullptr;
+      }
+
+      std::unique_ptr<ompl::base::MotionValidator>
+      createMotionValidator(const ompl::geometric::SimpleSetup& simple_setup,
+                            const std::shared_ptr<const tesseract::environment::Environment>& env,
+                            const std::shared_ptr<const tesseract::kinematics::JointGroup>& manip,
+                            const tp::OMPLStateExtractor& state_extractor,
+                            const std::shared_ptr<ompl::base::StateValidityChecker>& svc_without_collision) const override
+      {
+        if (collision_check_config.type != tesseract::collision::CollisionEvaluatorType::NONE)
+        {
+          if (collision_check_config.type == tesseract::collision::CollisionEvaluatorType::CONTINUOUS ||
+              collision_check_config.type == tesseract::collision::CollisionEvaluatorType::LVS_CONTINUOUS)
+          {
+            return std::make_unique<tp::ContinuousMotionValidator>(simple_setup.getSpaceInformation(),
+                                                                   svc_without_collision,
+                                                                   *env,
+                                                                   manip,
+                                                                   routing_contact_manager_config,
+                                                                   state_extractor);
+          }
+
+          // DISCRETE: the DiscreteMotionValidator delegates to the (overridden) collision state validator.
+          return std::make_unique<tp::DiscreteMotionValidator>(simple_setup.getSpaceInformation());
+        }
+        return nullptr;
+      }
+    };
+
+    nb::class_<OMPLRealVectorDualMarginMoveProfile, tp::OMPLRealVectorMoveProfile>(m, "OMPLRealVectorDualMarginMoveProfile",
+        "OMPLRealVectorMoveProfile variant with a separate collision margin for routing.\n\n"
+        "The inherited contact_manager_config governs start/goal admission (unchanged), while\n"
+        "routing_contact_manager_config governs path routing (edge/state collision checks). Set\n"
+        "contact_manager_config to a tight/truthful margin to admit tight-clearance goals, and\n"
+        "routing_contact_manager_config to an inflated margin to keep the path off the walls.")
+        .def(nb::init<>())
+        .def_rw("routing_contact_manager_config",
+            &OMPLRealVectorDualMarginMoveProfile::routing_contact_manager_config,
+            "Contact manager config used for routing (edge/state collision checks)");
 }

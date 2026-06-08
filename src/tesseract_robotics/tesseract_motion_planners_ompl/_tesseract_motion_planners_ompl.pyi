@@ -1,3 +1,5 @@
+"""tesseract_motion_planners_ompl Python bindings"""
+
 import enum
 from typing import TypeAlias
 
@@ -147,6 +149,25 @@ class OMPLRealVectorMoveProfile(OMPLMoveProfile):
     def collision_check_config(self, arg: tesseract_robotics.tesseract_collision._tesseract_collision.CollisionCheckConfig, /) -> None: ...
 
 OMPLRealVectorPlanProfile: TypeAlias = OMPLRealVectorMoveProfile
+
+class OMPLRealVectorDualMarginMoveProfile(OMPLRealVectorMoveProfile):
+    """
+    OMPLRealVectorMoveProfile variant with a separate collision margin for routing.
+
+    The inherited contact_manager_config governs start/goal admission (unchanged), while
+    routing_contact_manager_config governs path routing (edge/state collision checks). Set
+    contact_manager_config to a tight/truthful margin to admit tight-clearance goals, and
+    routing_contact_manager_config to an inflated margin to keep the path off the walls.
+    """
+
+    def __init__(self) -> None: ...
+
+    @property
+    def routing_contact_manager_config(self) -> tesseract_robotics.tesseract_collision._tesseract_collision.ContactManagerConfig:
+        """Contact manager config used for routing (edge/state collision checks)"""
+
+    @routing_contact_manager_config.setter
+    def routing_contact_manager_config(self, arg: tesseract_robotics.tesseract_collision._tesseract_collision.ContactManagerConfig, /) -> None: ...
 
 def OMPLMoveProfile_as_ProfileConstPtr(profile: OMPLMoveProfile) -> tesseract_robotics.tesseract_command_language._tesseract_command_language.Profile:
     """

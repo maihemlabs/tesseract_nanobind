@@ -69,6 +69,45 @@ profile.collision_check_config.longest_valid_segment_length = 0.01
 | `collision_check_config.longest_valid_segment_length` | collision | State-validation resolution |
 | `collision_check_config.type` | collision | `CollisionEvaluatorType` (discrete vs continuous) |
 
+### OMPLRealVectorDualMarginMoveProfile
+
+A variant of `OMPLRealVectorMoveProfile` that uses **two** collision margins —
+one for path *routing* and one for start/goal *admission*. The base profile uses
+a single `contact_manager_config` for both, which forces a trade-off: inflate the
+margin to keep the path off the walls and you also reject tight-clearance goals;
+shrink it to admit the goal and the path hugs obstacles.
+
+This profile splits the two:
+
+- `contact_manager_config` (inherited) — governs **start/goal admission**. Keep it
+  tight/truthful so a goal at its real clearance is still accepted.
+- `routing_contact_manager_config` — governs **path routing** (the edge/state
+  collision checks). Inflate it to push the path away from obstacles mid-transit.
+
+```python
+from tesseract_robotics.tesseract_collision import ContactManagerConfig
+from tesseract_robotics.tesseract_motion_planners_ompl import (
+    OMPLRealVectorDualMarginMoveProfile, RRTConnectConfigurator,
+    ProfileDictionary_addOMPLMoveProfile,
+)
+
+profile = OMPLRealVectorDualMarginMoveProfile()
+profile.solver_config.addPlanner(RRTConnectConfigurator())
+
+# Admit the goal at its true clearance...
+profile.contact_manager_config = ContactManagerConfig(0.005)
+# ...but route with a fatter margin so the path stays off the walls.
+profile.routing_contact_manager_config = ContactManagerConfig(0.05)
+
+# Register exactly like the base profile (any OMPLMoveProfile subclass works).
+ProfileDictionary_addOMPLMoveProfile(profiles, "OMPLMotionPlannerTask", "DEFAULT", profile)
+```
+
+It is a subclass of `OMPLRealVectorMoveProfile` and is used exactly like the base
+profile otherwise. The split is implemented in C++ by overriding the routing
+collision validators (`createCollisionStateValidator` / `createMotionValidator`);
+`createSimpleSetup()` and start/goal admission are unchanged.
+
 ## Planner Configurators
 
 ### RRTConnectConfigurator

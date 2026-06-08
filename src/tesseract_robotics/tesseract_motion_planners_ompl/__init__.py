@@ -9,6 +9,7 @@ __all__ = [
     "SBLConfigurator",
     "OMPLPlanProfile",
     "OMPLRealVectorPlanProfile",
+    "OMPLRealVectorDualMarginMoveProfile",
     "OMPLMotionPlanner",
     "OMPLPlanProfile_as_ProfileConstPtr",
     "ProfileDictionary_addOMPLProfile",

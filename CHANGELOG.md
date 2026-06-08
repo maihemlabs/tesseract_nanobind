@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **OMPL routing/admission margin split** — new `OMPLRealVectorDualMarginMoveProfile` in `tesseract_motion_planners_ompl` decouples the collision margin used for path *routing* (`routing_contact_manager_config`) from the margin used for start/goal *admission* (the inherited `contact_manager_config`), so a caller can admit a tight-clearance goal at its true margin while routing with an inflated margin to keep the path off the walls. Implemented as a C++ subclass overriding `createCollisionStateValidator` / `createMotionValidator`; the base `createSimpleSetup()` and start/goal admission are unchanged, and no tesseract core change is required.
+
 ## [0.35.0.4] - 2026-06-08 — conda-forge C++ deps + OSQP tunability + Linux libstdc++ preload + CI hardening
 
 - **OSQP solver settings exposed** — `OSQPEigenSolver` gains seven tunable setters (`setPolish`, `setWarmStart`, `setAdaptiveRho`, `setMaxIteration`, `setAbsoluteTolerance`, `setRelativeTolerance`, `setVerbosity`) and `TrajOptIfoptOSQPSolverProfile` gains `setAdaptiveRhoInterval`, enabling iteration-based (deterministic) rho adaptation for reproducible SQP solves; fixes dangling-pointer segfault in `getJacobian()` via `rv_policy::reference_internal` on `getVar`/`getNode`/`getNodes` ([0f40048], [c984044], [c083f5e], [#103]).
