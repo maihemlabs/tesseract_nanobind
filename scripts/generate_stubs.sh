@@ -35,6 +35,11 @@ MODULES=(
     "tesseract_robotics.tesseract_urdf._tesseract_urdf:tesseract_urdf"
     "tesseract_robotics.trajopt_ifopt._trajopt_ifopt:trajopt_ifopt"
     "tesseract_robotics.trajopt_sqp._trajopt_sqp:trajopt_sqp"
+    # Optional: only present when built with -DTESSERACT_NANOBIND_BUILD_ROS=ON.
+    # The loop below silently skips modules that fail to import, so these entries
+    # are no-ops on ROS-less builds.
+    "tesseract_robotics.tesseract_ros2_monitoring._tesseract_ros2_monitoring:tesseract_ros2_monitoring"
+    "tesseract_robotics.tesseract_ros2_rosutils._tesseract_ros2_rosutils:tesseract_ros2_rosutils"
 )
 
 # Pattern file for type cleanup (if exists)
@@ -53,6 +58,14 @@ for entry in "${MODULES[@]}"; do
     STUB_NAME="${MODULE##*.}"  # e.g., _tesseract_kinematics
     OUTPUT_DIR="$SRC_DIR/$SUBDIR"
     OUTPUT_FILE="$OUTPUT_DIR/${STUB_NAME}.pyi"
+
+    # Skip modules that aren't importable (e.g. ROS bindings on a ROS-less
+    # build). stubgen imports the module in-process, so we can't generate a
+    # stub for something we can't import.
+    if ! python -c "import $MODULE" >/dev/null 2>&1; then
+        echo "  $MODULE -> (skipped: module not importable)"
+        continue
+    fi
 
     echo "  $MODULE -> $SUBDIR/"
 

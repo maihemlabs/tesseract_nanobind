@@ -321,6 +321,7 @@ NB_MODULE(_tesseract_environment, m) {
         .def("reset", &te::Environment::reset)
         .def("clear", &te::Environment::clear)
         .def("getRevision", &te::Environment::getRevision)
+        .def("getCommandHistory", &te::Environment::getCommandHistory)
         .def("getName", &te::Environment::getName)
         .def("setName", &te::Environment::setName, "name"_a)
         // Scene graph
