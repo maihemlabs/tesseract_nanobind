@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.35.0.4] - 2026-06-08 — conda-forge C++ deps + OSQP tunability + Linux libstdc++ preload + CI hardening
+
+- **OSQP solver settings exposed** — `OSQPEigenSolver` gains seven tunable setters (`setPolish`, `setWarmStart`, `setAdaptiveRho`, `setMaxIteration`, `setAbsoluteTolerance`, `setRelativeTolerance`, `setVerbosity`) and `TrajOptIfoptOSQPSolverProfile` gains `setAdaptiveRhoInterval`, enabling iteration-based (deterministic) rho adaptation for reproducible SQP solves; fixes dangling-pointer segfault in `getJacobian()` via `rv_policy::reference_internal` on `getVar`/`getNode`/`getNodes` ([0f40048], [c984044], [c083f5e], [#103]).
+- **OMPL RNG determinism** — `RNG_setSeed`/`RNG_getSeed` bound in `tesseract_motion_planners_ompl`; `conftest.py` auto-reseeds per test for xdist-safe reproducibility; single-planner + `optimize=False` recipe documented as the only guaranteeable determinism contract (parallel-plan best-of-N races even with seeded samplers); Windows determinism test dropped — conda-forge `ompl.lib` embeds a separate `RNGSeedGenerator` copy per DLL so seeding the extension can't reach the planner ([a0f49c6], [5f4776e], [31c7541], [#103]).
+- **conda-forge C++ deps** — C++ stack migrated from colcon workspace build to conda-forge prebuilts; `pixi install && pixi run build` replaces `pixi run build-cpp` / colcon; `pixi.lock` v7 with eigen-abi-tagged `orocos-kdl _2` ending heap corruption in all KDL paths; `locked:true` + pinned `pixi-version` in CI so stale-lock drift fails loud; build-dir cache keyed on `pixi.lock` hash; Python 3.9 feature env added for Rhino 8 ([b6a14c4], [3c80a25], [6210a99], [0455e34]).
+- **Linux libstdc++ preload** — bundled gcc-14 `libstdc++` loaded `RTLD_GLOBAL` as the first act of `__init__` wins the SONAME race before numpy/scipy can pull in the system copy on Ubuntu 22.04 and older; gated on `CONDA_PREFIX` absence to avoid double-loading inside pixi/conda envs ([#35], [ee83dc8], [7715422]).
+- **`Environment.setState` input validation** — unknown or non-active (fixed/mimic) joint names now raise `ValueError` with a clear message instead of silently dereferencing unmapped entries and crashing with `SIGSEGV`; all three entry points covered (dict, names+values, `setStateByNamesAndValues`) ([#43], [ca620d3]).
+- **`SceneGraph` type registration in URDF module** — `_tesseract_urdf` now imports `_tesseract_scene_graph` at module load so the return type of `parseURDFFile` is always registered; was masked by full-suite imports, exposed by the new minimal-import ABI canary ([f944293]).
+- **CI hardening** — Windows test-wheel now runs the full suite (kinematics + examples, benchmarks-only exclusion); macOS nanobind build directory cached to halve warm builds; ABI canary (install wheel into pixi env → kinematics smoke-test) on Linux and macOS build jobs catches dep-ABI rot in ~30 s instead of as scattered segfaults in test-wheel; duplicate CI env block merged ([e60f272], [b29c37a], [04a812f], [6210a99], [607b4b9]).
+- **Dotgraph polish** — `TaskComposer` pipeline diagrams woven into docs; `clean_dot_labels` strips dump-debug fields for legibility; contract test + type annotations ([4aa5efb], [57537da], [1bfb4c3]).
+
 ## [0.35.0.3] - 2026-06-05 — complete wheel matrix for the 0.35.0.2 content
 
 Reissue of [0.35.0.2] with the full wheel set actually published. In 0.35.0.2 a dirty CI build tree made `setuptools_scm` stamp a PEP 440 local segment (`+d<date>`) onto some wheels; PyPI rejects those with HTTP 400, and the non-idempotent publish step aborted mid-upload — so macOS (all) and Linux x86_64 (`cp39`/`cp311`) wheels never landed. 0.35.0.2 is yanked. Identical bindings to 0.35.0.2 — no API changes ([49f1aa9]).
@@ -88,7 +99,8 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 - Non-benchmark tests fail loud instead of being silently skipped ([a1d7607]).
 - Python 3.9 compatibility for example modules via `from __future__ import annotations` ([87ce68e]).
 
-[Unreleased]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.3...HEAD
+[Unreleased]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.4...HEAD
+[0.35.0.4]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.3...0.35.0.4
 [0.35.0.3]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.2...0.35.0.3
 [0.35.0.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.1...0.35.0.2
 [0.35.0.1]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.7...0.35.0.1
@@ -98,7 +110,9 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [0.34.1.4]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.2...0.34.1.4
 [0.34.1.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.1...0.34.1.2
 [0.34.1.1]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.0...0.34.1.1
+[#35]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/35
 [#40]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/40
+[#43]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/43
 [#48]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/48
 [#49]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/49
 [#51]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/51
@@ -123,6 +137,7 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [#91]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/91
 [#94]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/94
 [#97]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/97
+[#103]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/103
 [07f8f9c]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/07f8f9c8c54ab13c3d10ceca00181091d0126336
 [2c62952]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/2c62952fded6cb1253cb45441d7cd6f9b0423593
 [361c60e]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/361c60e263f0768e1b23d3a9919f700d06b15993
@@ -183,6 +198,27 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [669f2da]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/669f2da
 [f30014b]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/f30014b
 [7a3b0e3]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/7a3b0e3
+[04a812f]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/04a812f
+[0f40048]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/0f40048
+[0455e34]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/0455e34
+[1bfb4c3]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/1bfb4c3
+[31c7541]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/31c7541
+[3c80a25]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/3c80a25
+[4aa5efb]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/4aa5efb
+[57537da]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/57537da
+[5f4776e]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/5f4776e
+[607b4b9]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/607b4b9
+[6210a99]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/6210a99
+[7715422]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/7715422
+[a0f49c6]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/a0f49c6
+[b29c37a]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/b29c37a
+[b6a14c4]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/b6a14c4
+[c083f5e]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/c083f5e
+[c984044]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/c984044
+[ca620d3]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/ca620d3
+[e60f272]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/e60f272
+[ee83dc8]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/ee83dc8
+[f944293]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/f944293
 [@Joelkang]: https://github.com/Joelkang
 [@johnwason]: https://github.com/johnwason
 [@marip8]: https://github.com/marip8
