@@ -1,14 +1,38 @@
-"""Tests for tesseract_motion_planners_simple profile bindings.
+"""Tests for tesseract_motion_planners_simple.
 
-Covers the 2 profile bases and 7 concrete move profiles, plus the
-ProfileDictionary registration helpers.
+Covers the 2 profile bases and 7 concrete move profiles, the ProfileDictionary
+registration helpers, and the generateInterpolatedProgram utility.
 """
 
 import math
 
+import numpy as np
 import pytest
 
-from tesseract_robotics.tesseract_command_language import ProfileDictionary
+from tesseract_robotics.tesseract_command_language import (
+    CartesianWaypoint,
+    CartesianWaypointPoly_wrap_CartesianWaypoint,
+    CompositeInstruction,
+    MoveInstruction,
+    MoveInstructionPoly_wrap_MoveInstruction,
+    MoveInstructionType_FREESPACE,
+    ProfileDictionary,
+)
+from tesseract_robotics.tesseract_common import (
+    FilesystemPath,
+    GeneralResourceLocator,
+    Isometry3d,
+    ManipulatorInfo,
+    Quaterniond,
+    Translation3d,
+)
+from tesseract_robotics.tesseract_environment import Environment
+from tesseract_robotics.tesseract_motion_planners import PlannerRequest
+from tesseract_robotics.tesseract_motion_planners_ompl import (
+    OMPLMotionPlanner,
+    OMPLRealVectorPlanProfile,
+    ProfileDictionary_addOMPLProfile,
+)
 from tesseract_robotics.tesseract_motion_planners_simple import (
     SimplePlannerCompositeProfile,
     SimplePlannerFixedSizeAssignMoveProfile,
@@ -19,7 +43,26 @@ from tesseract_robotics.tesseract_motion_planners_simple import (
     SimplePlannerLVSMoveProfile,
     SimplePlannerLVSNoIKMoveProfile,
     SimplePlannerMoveProfile,
+    generateInterpolatedProgram,
 )
+
+OMPL_DEFAULT_NAMESPACE = "OMPLMotionPlannerTask"
+
+
+@pytest.fixture
+def abb_irb2400_environment():
+    """Load ABB IRB2400 robot environment for testing."""
+    locator = GeneralResourceLocator()
+    urdf_path = FilesystemPath(
+        locator.locateResource("package://tesseract/support/urdf/abb_irb2400.urdf").getFilePath()
+    )
+    srdf_path = FilesystemPath(
+        locator.locateResource("package://tesseract/support/urdf/abb_irb2400.srdf").getFilePath()
+    )
+    t_env = Environment()
+    assert t_env.init(urdf_path, srdf_path, locator), "Failed to initialize ABB IRB2400"
+    return t_env
+
 
 # ---- Fixed-size profiles ---------------------------------------------------
 
@@ -132,3 +175,52 @@ class TestProfileDictionaryHelpers:
         profile = SimplePlannerCompositeProfile()
         d.addProfile("ns", "DEFAULT", profile)
         assert d.hasProfile(profile.getKey(), "ns", "DEFAULT") is True
+
+
+# ---- generateInterpolatedProgram -------------------------------------------
+
+
+class TestSimplePlanner:
+    """Test simple motion planner utilities."""
+
+    def test_generate_interpolated_program(self, abb_irb2400_environment):
+        """generateInterpolatedProgram over an OMPL-planned result."""
+        t_env = abb_irb2400_environment
+
+        manip_info = ManipulatorInfo()
+        manip_info.tcp_frame = "tool0"
+        manip_info.manipulator = "manipulator"
+        manip_info.working_frame = "base_link"
+
+        t_env.setState([f"joint_{i + 1}" for i in range(6)], np.ones(6) * 0.1)
+
+        # Single-waypoint freespace move.
+        wp1 = CartesianWaypoint(
+            Isometry3d.Identity()
+            * Translation3d(0.8, 0.0, 1.455)
+            * Quaterniond.from_xyzw(0, 0.70710678, 0, 0.70710678)
+        )
+        mi = MoveInstruction(
+            CartesianWaypointPoly_wrap_CartesianWaypoint(wp1),
+            MoveInstructionType_FREESPACE,
+            "DEFAULT",
+        )
+        program = CompositeInstruction("DEFAULT")
+        program.setManipulatorInfo(manip_info)
+        program.appendMoveInstruction(MoveInstructionPoly_wrap_MoveInstruction(mi))
+
+        # First solve with OMPL to get a valid result to interpolate.
+        plan_profile = OMPLRealVectorPlanProfile()
+        profiles = ProfileDictionary()
+        ProfileDictionary_addOMPLProfile(profiles, OMPL_DEFAULT_NAMESPACE, "DEFAULT", plan_profile)
+
+        request = PlannerRequest()
+        request.instructions = program
+        request.env = t_env
+        request.profiles = profiles
+
+        response = OMPLMotionPlanner(OMPL_DEFAULT_NAMESPACE).solve(request)
+
+        if response.successful:
+            interpolated = generateInterpolatedProgram(response.results, t_env, 3.14, 1.0, 3.14, 10)
+            assert interpolated is not None

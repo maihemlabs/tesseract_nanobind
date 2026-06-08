@@ -1,11 +1,12 @@
-"""Tests for OMPLRealVectorDualMarginMoveProfile.
+"""Tests for the OMPL motion planner.
 
-This profile decouples the collision margin used for path *routing*
-(routing_contact_manager_config) from the margin used for start/goal
-*admission* (the inherited contact_manager_config). The override lives in
-C++ (createCollisionStateValidator / createMotionValidator) and is dispatched
-virtually by the unchanged base createSimpleSetup(), so the planning-loop
-tests below are what actually prove the override is wired in.
+Covers planner/profile construction, the end-to-end planning workflow, and
+OMPLRealVectorDualMarginMoveProfile, which decouples the collision margin used
+for path *routing* (routing_contact_manager_config) from the margin used for
+start/goal *admission* (the inherited contact_manager_config). That override
+lives in C++ (createCollisionStateValidator / createMotionValidator) and is
+dispatched virtually by the unchanged base createSimpleSetup(), so the
+planning-loop tests are what actually prove it is wired in.
 """
 
 import numpy as np
@@ -36,9 +37,14 @@ from tesseract_robotics.tesseract_motion_planners_ompl import (
     OMPLMoveProfile,
     OMPLRealVectorDualMarginMoveProfile,
     OMPLRealVectorMoveProfile,
+    OMPLRealVectorPlanProfile,
     OMPLSolverConfig,
     ProfileDictionary_addOMPLMoveProfile,
+    ProfileDictionary_addOMPLProfile,
     RRTConnectConfigurator,
+)
+from tesseract_robotics.tesseract_motion_planners_simple import (
+    generateInterpolatedProgram,
 )
 
 OMPL_DEFAULT_NAMESPACE = "OMPLMotionPlannerTask"
@@ -116,6 +122,60 @@ def _solve(t_env, profile):
     request.profiles = profiles
 
     return OMPLMotionPlanner(OMPL_DEFAULT_NAMESPACE).solve(request)
+
+
+class TestPlannerRequest:
+    """Test PlannerRequest creation."""
+
+    def test_default_constructor(self):
+        request = PlannerRequest()
+        assert request is not None
+
+
+class TestOMPLMotionPlanner:
+    """Test OMPL motion planner."""
+
+    def test_constructor(self):
+        planner = OMPLMotionPlanner(OMPL_DEFAULT_NAMESPACE)
+        assert planner is not None
+
+    def test_plan_profile(self):
+        profile = OMPLRealVectorPlanProfile()
+        assert profile is not None
+
+
+class TestOMPLPlanning:
+    """Integration test for OMPL motion planning with the ABB robot."""
+
+    def test_ompl_planning_workflow(self, abb_irb2400_environment):
+        """Full OMPL planning workflow: plan wp1->wp2, then interpolate."""
+        t_env = abb_irb2400_environment
+        t_env.setState([f"joint_{i + 1}" for i in range(6)], np.ones(6) * 0.1)
+
+        plan_profile = OMPLRealVectorPlanProfile()
+        profiles = ProfileDictionary()
+        ProfileDictionary_addOMPLProfile(profiles, OMPL_DEFAULT_NAMESPACE, "DEFAULT", plan_profile)
+
+        request = PlannerRequest()
+        request.instructions = _make_program()
+        request.env = t_env
+        request.profiles = profiles
+
+        response = OMPLMotionPlanner(OMPL_DEFAULT_NAMESPACE).solve(request)
+        assert response.successful, f"OMPL planning failed: {response.message}"
+        assert response.results is not None
+
+        interpolated_results = generateInterpolatedProgram(response.results, t_env, 3.14, 1.0, 3.14, 10)
+        assert interpolated_results is not None
+
+
+# NOTE(#103): a TestOMPLSeedDeterminism contract test (same seed -> bit-identical
+# path via single-planner + optimize=False) lived here briefly. It cannot pass on
+# Windows: conda-forge win-64 ompl ships only a static Library/lib/ompl.lib, so
+# the planner DLL and the Python extension each embed their own copy of OMPL's
+# RNGSeedGenerator - RNG_setSeed seeds the extension's copy, RRTConnect draws
+# from the DLL's. Restore the test once OMPL is shared on Windows or upstream
+# OMPLSolverConfig grows a seed field applied inside parallelPlan.
 
 
 class TestDualMarginProfileConstruction:
