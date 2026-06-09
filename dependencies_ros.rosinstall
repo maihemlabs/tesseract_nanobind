@@ -1,0 +1,10 @@
+# Pinned to master HEAD rather than the 0.34.0 tag: the 0.34 tag's CMake uses the
+# pre-consolidation find_package(tesseract_common) + tesseract::tesseract_common
+# targets, which tesseract 0.35 (the conda C++) renamed. master uses the 0.35
+# layout — find_package(tesseract COMPONENTS common visualization) +
+# tesseract_planning COMPONENTS motion_planners task_composer — all of which the
+# conda packages provide. Bump this SHA when intentionally tracking master.
+- git:
+    local-name: tesseract_ros2
+    uri: https://github.com/tesseract-robotics/tesseract_ros2.git
+    version: f7e116733016fc1f5e8bf1f7e5414b186cbec752

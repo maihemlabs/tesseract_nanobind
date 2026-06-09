@@ -270,9 +270,53 @@ setuptools-scm = ">=8"
 [tool.pixi.feature.py39.target.osx-arm64.tasks]
 build-wheel = { cmd = "zsh scripts/build_macos_wheel.sh", description = "Build portable cp39 macOS wheel against TESSERACT_CPP_PREFIX" }
 
+# ROS 2 bindings (opt-in). This feature is combined with each py3XX feature in the
+# dedicated ros-py3XX environments (see [tool.pixi.environments]) so the ROS build runs
+# on a python matching your ROS 2 distro — matching the interpreter avoids the
+# version-skew that breaks colcon / rosidl / ament when a newer python meets a sourced
+# ROS distro. Run via `pixi run -e ros-py312 install` (then `test`), from a shell that
+# has sourced /opt/ros/<distro>/setup.bash. ament/rosidl python helpers come from the
+# sourced ROS (importable because the env python matches). install/test override the
+# defaults in those envs; the plain py3XX matrix envs stay ROS-free.
+[tool.pixi.feature.ros.dependencies]
+# Build-time CMake macros (find_package(ros_industrial_cmake_boilerplate)) the
+# tesseract_ros2 overlay needs; conda ships it (…-packaging feedstock), ROS/pip do not.
+ros-industrial-cmake-boilerplate = "*"
+
+[tool.pixi.feature.ros.pypi-dependencies]
+# colcon orchestrates the overlay build; install it in-env rather than relying on a
+# system apt colcon, so the toolchain matches the env interpreter (the ros-py3XX python).
+colcon-common-extensions = "*"
+
+# `install` and `test` here OVERRIDE the default-feature tasks of the same name in any
+# env that includes the `ros` feature (the ros-py3XX envs) — pixi resolves same-named
+# tasks by feature order and `ros` is listed last. Other envs are unaffected. So:
+#   pixi run -e ros-py312 install   -> overlay build + editable install with ROS bindings on
+#   pixi run -e ros-py312 test      -> ROS binding tests
+# build-ros has no default-task analog (it's the colcon overlay build), so it keeps its
+# own name; `install` depends on it. (`build` chains through the overridden `install`.)
+[tool.pixi.feature.ros.tasks]
+build-ros = { cmd = "bash scripts/build_tesseract_ros2.sh", description = "Source-build the tesseract_ros2 overlay (msgs/rosutils/monitoring) against the conda tesseract C++ into ws/install. Run from a shell that sourced /opt/ros/<distro>/setup.bash." }
+install = { cmd = "bash scripts/install_with_ros.sh", depends-on = [
+    "build-ros",
+], description = "Editable install incl. ROS 2 bindings (-DTESSERACT_NANOBIND_BUILD_ROS=ON); chains build-ros (tesseract_ros2 overlay). Overrides the default install in ros-py3XX envs." }
+# PYTEST_DISABLE_PLUGIN_AUTOLOAD: a sourced ROS 2 distro puts its launch_testing /
+# launch_pytest plugins on the path; these binding tests only import tesseract_robotics.*
+# (no rclpy), so skip third-party pytest plugins entirely.
+test = { cmd = "python -m pytest tests/tesseract_ros2_monitoring tests/tesseract_ros2_rosutils -x -q", env = { PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1" }, depends-on = [
+    "install",
+], description = "Run ROS 2 binding tests (overrides the default full-suite test in ros-py3XX envs)." }
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
 py39 = { features = ["py39"], no-default-feature = true, solve-group = "py39" }
 py310 = { features = ["py310"], solve-group = "py310" }
 py311 = { features = ["py311"], solve-group = "py311" }
 py312 = { features = ["py312"], solve-group = "py312" }
+# Dedicated ROS 2 envs: same python as the matching py3XX env (shared solve-group, so no
+# extra solve) plus the `ros` feature. Keeps the plain py3XX matrix envs ROS-free. Pick
+# the env whose python matches your ROS 2 distro — ros-py310 (Humble/Iron), ros-py312
+# (Jazzy/Rolling) — e.g. `pixi run -e ros-py312 install` then `pixi run -e ros-py312 test`.
+ros-py310 = { features = ["py310", "ros"], solve-group = "py310" }
+ros-py311 = { features = ["py311", "ros"], solve-group = "py311" }
+ros-py312 = { features = ["py312", "ros"], solve-group = "py312" }

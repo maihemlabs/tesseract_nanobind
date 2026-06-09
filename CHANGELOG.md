@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- **Opt-in ROS 2 bindings** (`-DTESSERACT_NANOBIND_BUILD_ROS=ON`; default wheels stay ROS-free, built locally in a shell that has sourced `/opt/ros/<distro>/setup.bash`) — two new modules wrapping [`tesseract_ros2`][tesseract_ros2], contributed by [@seonixx]:
+  - **`tesseract_ros2_monitoring`** — wraps `tesseract_monitoring`: the abstract `EnvironmentMonitor` base, the concrete `ROSEnvironmentMonitor`, `CurrentStateMonitor`, `MonitoredEnvironmentMode`, and a `ROSContext` helper that owns `rclcpp::init`/`shutdown` plus a user-facing `rclcpp::Node` spun on a background executor. Prefixed `tesseract_ros2_` so a future `tesseract_ros_monitoring` (ROS 1) can coexist without a breaking rename.
+  - **`tesseract_ros2_rosutils`** — wraps the `tesseract_rosutils` conversion helpers: `Pose` ↔ `Eigen::Isometry3d`, `tesseract_msgs::EnvironmentCommand` ↔ `tesseract_environment::Command` (Link/Joint/SceneGraph dispatch), and both `tesseract_msgs::JointTrajectory` and `trajectory_msgs::JointTrajectory` ↔ `tesseract_common::JointTrajectory`. ROS message types are bound as nanobind classes (not `rclpy` classes), so publishing to a topic field-copies between the bound msg and the matching `rclpy` message. Also adds `tesseract_common::JointTrajectory` to the `tesseract_common` module as a prerequisite for the trajectory converters.
+
 ## [0.35.0.4] - 2026-06-08 — conda-forge C++ deps + OSQP tunability + Linux libstdc++ preload + CI hardening
 
 - **OSQP solver settings exposed** — `OSQPEigenSolver` gains seven tunable setters (`setPolish`, `setWarmStart`, `setAdaptiveRho`, `setMaxIteration`, `setAbsoluteTolerance`, `setRelativeTolerance`, `setVerbosity`) and `TrajOptIfoptOSQPSolverProfile` gains `setAdaptiveRhoInterval`, enabling iteration-based (deterministic) rho adaptation for reproducible SQP solves; fixes dangling-pointer segfault in `getJacobian()` via `rv_policy::reference_internal` on `getVar`/`getNode`/`getNodes` ([0f40048], [c984044], [c083f5e], [#103]).
@@ -111,6 +115,8 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [0.34.1.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.1...0.34.1.2
 [0.34.1.1]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.34.1.0...0.34.1.1
 [#35]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/35
+[tesseract-planning]: https://github.com/tesseract-robotics/tesseract_planning
+[tesseract_ros2]: https://github.com/tesseract-robotics/tesseract_ros2
 [#40]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/40
 [#43]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/43
 [#48]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/48
