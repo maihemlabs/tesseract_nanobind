@@ -22,6 +22,8 @@ Python bindings for [Tesseract](https://github.com/tesseract-robotics/tesseract)
 - Task composition and pipelines
 - Pythonic high-level API
 
+for an excellent overview of `Tesseract's` architecture & features see [this presentation on Vimeo](https://vimeo.com/649656119)
+
 ## Installation
 
 ```bash
