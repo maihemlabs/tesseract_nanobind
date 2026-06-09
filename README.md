@@ -12,6 +12,10 @@
 
 Python bindings for [Tesseract](https://github.com/tesseract-robotics/tesseract) robotics motion planning using [nanobind](https://github.com/wjakob/nanobind).
 
+## Documentation 
+
+Maintained in `/docs` and published to https://tesseract-robotics.github.io/tesseract_nanobind/
+
 ## Features
 
 - Scene loading and management (URDF, SRDF, meshes)
