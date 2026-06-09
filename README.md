@@ -30,7 +30,15 @@ for an excellent overview of `Tesseract's` architecture & features see [this pre
 pip install tesseract-robotics-nanobind
 ```
 
-**Platform support:** Linux and windows x86_64, macOS arm64
+**Platform support:** 
+
+- linux
+   - x86_64 - 3.10-3.14
+   - aarch64 - 3.12-3.14
+- windows
+    - x86_64 - 3.9-3.14
+- macOS
+    - arm64 - 3.9-3.14
 
 ## Quick Start
 
