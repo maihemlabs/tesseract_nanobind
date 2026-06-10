@@ -133,6 +133,54 @@ differs, which is what makes the result fair to eyeball.
     penetrations deeper than 10 m would register and the colliding plan is
     allowed to finish and return a real `CompositeInstruction`.
 
+## Point cloud → V-HACD Convex Hulls Example
+
+The octree example above represents a scan as occupied voxels. This one takes
+the opposite, surface-fitted route: it reconstructs a mesh from a fused
+point-cloud scan (`.pcd`), decomposes it into **convex hulls** with V-HACD, and
+attaches those hulls to a Tesseract `Environment` as collision (and colored
+visual) geometry.
+
+Why convex hulls? Convex-vs-convex distance queries (GJK/EPA) are exact, fast,
+and produce the smooth gradients optimization-based planners want — without the
+per-voxel "bulging" of a coarse octree. The expensive reconstruction +
+decomposition runs once, offline; the resulting hulls then query in
+microseconds.
+
+```bash
+tesseract_pcd_vhacd_collision_example
+# custom cloud, hull budget, units (mm cloud -> metres is the default 0.001)
+tesseract_pcd_vhacd_collision_example path/to/scan.pcd --max-hulls 64 --scale 0.001
+```
+
+Pipeline: load + downsample → ball-pivoting surface reconstruction (uses the
+scan normals) → `ConvexDecompositionVHACD` → `ConvexMesh` collision shapes on a
+`workpiece` link → `contactTest` verification → viewer.
+
+Typical output:
+
+```text
+loaded 1065689 points; extent (mm) = [249.1 250.1  87.6]
+reconstructed mesh: 22800 verts, 40000 tris (scaled x0.001 -> extent [0.249 0.25 0.087] m)
+V-HACD: 48 hulls, 772 total verts in 1.6s
+env links: ['world', 'workpiece']; workpiece collision shapes: 48
+probe @ [0.775 -0.075 0.025] m: 3 contact(s) within 5mm
+```
+
+!!! warning "Units: Tesseract works in metres"
+    Scans are usually in millimetres. The example scales the cloud by
+    `--scale` (default `0.001`, mm→m) before building geometry; pass
+    `--scale 1.0` for a cloud already in metres. Skipping this places the part
+    1000× too far from the origin in the viewer.
+
+!!! note "Requires Open3D"
+    Surface reconstruction uses Open3D (`pip install open3d`); it is not a hard
+    dependency of the package. The example uses ball-pivoting rather than
+    Poisson, which is unstable in some Open3D builds.
+
+Source:
+[`pcd_vhacd_collision_example.py`](https://github.com/tesseract-robotics/tesseract_nanobind/blob/main/src/tesseract_robotics/examples/pcd_vhacd_collision_example.py).
+
 ## Reeds-Shepp Example
 
 Reeds-Shepp path for a differential-drive vehicle — a 2D motion planning

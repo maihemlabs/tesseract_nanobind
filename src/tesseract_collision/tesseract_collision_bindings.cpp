@@ -28,6 +28,15 @@
 // bullet convex hull utils
 #include <tesseract/collision/bullet/convex_hull_utils.h>
 
+// VHACD convex decomposition.
+// Include VHACD.h first WITHOUT defining ENABLE_VHACD_IMPLEMENTATION so its
+// include guard (#ifndef VHACD_H) suppresses the forced implementation that
+// convex_decomposition_vhacd.h would otherwise recompile into this TU. The
+// implementation lives in libtesseract_collision_vhacd_convex_decomposition.so.
+#include <tesseract/collision/vhacd/VHACD.h>
+#include <tesseract/collision/convex_decomposition.h>
+#include <tesseract/collision/vhacd/convex_decomposition_vhacd.h>
+
 namespace tc = tesseract::collision;
 namespace tcommon = tesseract::common;
 namespace tg = tesseract::geometry;
@@ -401,4 +410,42 @@ NB_MODULE(_tesseract_collision, m) {
     // Convex hull utilities
     m.def("makeConvexMesh", &tc::makeConvexMesh, "mesh"_a,
           "Create a ConvexMesh from a Mesh using bullet's convex hull algorithm");
+
+    // ========== VHACD convex decomposition ==========
+    // Decompose a (possibly concave) triangle mesh into a set of convex hulls.
+    nb::enum_<VHACD::FillMode>(m, "VHACDFillMode")
+        .value("FLOOD_FILL", VHACD::FillMode::FLOOD_FILL)
+        .value("SURFACE_ONLY", VHACD::FillMode::SURFACE_ONLY)
+        .value("RAYCAST_FILL", VHACD::FillMode::RAYCAST_FILL);
+
+    nb::class_<tc::VHACDParameters>(m, "VHACDParameters")
+        .def(nb::init<>())
+        .def_rw("max_convex_hulls", &tc::VHACDParameters::max_convex_hulls,
+                "Maximum number of convex hulls to produce")
+        .def_rw("resolution", &tc::VHACDParameters::resolution,
+                "Voxel resolution used for the internal voxelization")
+        .def_rw("minimum_volume_percent_error_allowed",
+                &tc::VHACDParameters::minimum_volume_percent_error_allowed,
+                "Stop splitting once a hull is within this %% volume of the source")
+        .def_rw("max_recursion_depth", &tc::VHACDParameters::max_recursion_depth)
+        .def_rw("shrinkwrap", &tc::VHACDParameters::shrinkwrap,
+                "Shrinkwrap voxel positions back onto the source mesh on output")
+        .def_rw("fill_mode", &tc::VHACDParameters::fill_mode)
+        .def_rw("max_num_vertices_per_ch", &tc::VHACDParameters::max_num_vertices_per_ch,
+                "Maximum vertices allowed in any output convex hull")
+        .def_rw("async_ACD", &tc::VHACDParameters::async_ACD,
+                "Run asynchronously across multiple cores")
+        .def_rw("min_edge_length", &tc::VHACDParameters::min_edge_length)
+        .def_rw("find_best_plane", &tc::VHACDParameters::find_best_plane,
+                "Experimental: search for the best split-plane location")
+        .def("print", &tc::VHACDParameters::print);
+
+    nb::class_<tc::ConvexDecompositionVHACD>(m, "ConvexDecompositionVHACD")
+        .def(nb::init<>())
+        .def(nb::init<const tc::VHACDParameters&>(), "params"_a)
+        .def("compute", &tc::ConvexDecompositionVHACD::compute,
+             "vertices"_a, "faces"_a, "verbose"_a = true,
+             "Run V-HACD convex decomposition and return a list of ConvexMesh hulls.\n"
+             "faces uses tesseract's polygon format: each face is laid out as\n"
+             "[n, i0, i1, ... i(n-1)] where n is the vertex count of that face.");
 }
