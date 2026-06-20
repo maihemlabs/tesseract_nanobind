@@ -187,7 +187,7 @@ pip install wheelhouse/tesseract*.whl
 This project builds upon the excellent work of [John Wason](https://github.com/johnwason) and the [Tesseract Robotics](https://github.com/tesseract-robotics) team. The original [tesseract_python](https://github.com/tesseract-robotics/tesseract_python) SWIG bindings laid the foundation for this nanobind implementation.
 
 Special thanks to:
-- **John Wason** (Wason Technology, LLC) - Original tesseract_python author and Tesseract maintainer
+- **John Wason** ([Wason Technology, LLC](https://www.wasontech.com/)) - Original tesseract_python author and Tesseract maintainer
 - **Levi Armstrong** - Tesseract core developer
 - **Jelle Feringa** ([Terrestrial](http://terrestrial.construction)) - nanobind port developer
 - **Joel Kang** ([Tekton Dynamics](https://tekton-dynamics.com))
