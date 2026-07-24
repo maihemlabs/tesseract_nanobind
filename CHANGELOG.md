@@ -1,6 +1,17 @@
 # Changelog
 
-## [Unreleased]
+## [0.35.0.7] — multi-brand emitter subsystem + coordinated external axes
+
+- **Brand-independent multi-dialect emitter** — the ABB-only RAPID emitter (shipped in [0.35.0.1]) is generalised into a typed intermediate representation and lowering pass feeding per-dialect backends over a shared `ProgramBackend` ABC, so a new controller language is a backend, not a fork. Five dialects emit from one tesseract `CompositeInstruction` — ABB **RAPID**, KUKA **KRL**, Fanuc **LS** (TP ASCII), Yaskawa Motoman **JBI** (INFORM), and Universal Robots **URScript** — all exported from `tesseract_robotics.emitters` with a mermaid architecture page. RAPID is reseated onto the core IR and decomposed into `profile` / `targets` / `emit` / `backend` modules; its public surface (`emit_rapid`, `RapidProfile`, `rapid_writer`) is preserved through re-exports, so existing callers are unaffected ([#128]).
+- **External-axis (`eax`) emission for coordinated motion** — RAPID `robtarget` / `jointtarget` now carry real external-axis values (linear track in mm, rotary positioner in deg) instead of the `9E9` sentinel, split off the joint vector by joint name so a positioner ordered ahead of the arm can't bleed into the arm axes; `external_axes=None` stays byte-identical to prior output. Emitted programs also gain an ASCII-safe generated header and explicit UTF-8 writes so they survive Windows' locale codec ([#127], [#128]).
+- **`createInvKin` / `createFwdKin` teardown SIGSEGV fixed** — the returned solver holds raw pointers into the scene graph, scene state, and plugin factory, so `nb::keep_alive` binds those to the solver's lifetime (the factory owns the dylib whose vtables the solver dispatches through). Coupled ROP/REP external-axis solvers no longer double-free at interpreter shutdown — the same destruction-order class fixed for plugin getters in 0.35.0.5 (gh-72), now closed for the kinematics factory functions ([#126]).
+
+## [0.35.0.6] - 2026-07-04 — runtime kinematics commands + SQP GIL release
+
+- **`AddKinematicsInformationCommand` + `KinematicsPluginInfo` bound** — inverse/forward-kinematics solver plugins and named kinematic groups can be added to an environment at runtime from Python via an environment command, instead of only through the SRDF at load time ([#125], [e51946f]).
+- **GIL released in `TrustRegionSQPSolver.solve`** (plus `FK` and `setCollisionObjectsTransform`) — mirrors the collision and motion-planner `call_guard<gil_scoped_release>` guards so long SQP optimisations run off the main thread without blocking other Python work ([#123], [0f12535]).
+
+## [0.35.0.5] - 2026-06-20 — Descartes in the high-level API + collision GIL release + teardown & wheel fixes
 
 - **`contactTest` releases the GIL — parallel collision checking across cores** — `DiscreteContactManager.contactTest` and `ContinuousContactManager.contactTest` now bind with `nb::call_guard<nb::gil_scoped_release>()`, mirroring the motion planners' `solve()` guards. Without it a Python worker thread sweeping a trajectory for collisions only time-shared the GIL with the main thread (concurrency, not parallelism — the sweep didn't get faster and contended with the UI); with it, sweeping on per-thread cloned managers scales near-linearly — measured **1.95×** on 2 threads (10-core machine) against a **0.99×** pure-Python control that rules out a measurement artifact. Enables off-main-thread, sharded collision scans of a whole program ([#122]).
 - **Plugin-backed objects keep their Environment alive — fixes the gh-72 SIGSEGV lottery** — `getKinematicGroup` / `getJointGroup` / `getDiscreteContactManager` / `getContinuousContactManager` now bind with `nb::keep_alive<0, 1>`. These objects are plugin-created (OPW/KDL/UR kinematics, bullet/fcl collision factories) and their vtables live in dylibs owned by the Environment's plugin loader; when Python destroyed the Environment first (interpreter-teardown dict order, pytest GC), the loader dlclosed the plugin dylibs and the survivors' destructors virtual-called into unmapped pages. Whether a given script crashed was pure destruction-order luck — the reported "`calcJacobian` segfaults under pytest but works in plain Python" was this lottery, not the jacobian path (lldb forensics: dangling vptr pinned inside unloaded `libtesseract_kinematics_opw.dylib`) ([#72]).
@@ -10,6 +21,7 @@
 - **Lowlevel planning example: TrajOpt profiles reach the solver** — `tesseract_planning_lowlevel_c_api_example.py` added its TrajOpt plan/composite profiles to the OMPL dictionary while handing the solver an empty `trajopt_profiles`; TrajOpt silently planned on fallback defaults ([#115]).
 - **`get_task_composer_config_path()` resolves like the runtime** — returns the `@PLUGIN_PATH@`-patched config that `_configure_environment()` publishes via `TESSERACT_TASK_COMPOSER_CONFIG_FILE` (env var → bundled data → conda share) instead of unconditionally returning the bundled-only path, which doesn't exist in dev envs and was unpatched in wheels; raises the new `TaskComposerConfigNotFoundError` when nothing resolves; the hand-rolled fallback chains in the task composer tests, `TaskComposer.from_config`, and `scripts/generate_pipeline_dotgraphs.py` now delegate to it ([#110]).
 - **ruff enforces the py39 floor** — `FA102` added to lint select so PEP 604 unions without `from __future__ import annotations` fail the hooks; with `target-version = "py39"` (rejects 3.10+ syntax) this turns 3.9 compatibility from convention into a gate ([#92]).
+- **Symmetric `shared_ptr<Environment>` serialization writers** — the environment write path now mirrors the reader, fixing the polymorphic cast that broke `environment_from_*` deserialisation round-trips ([#121], [bcac229]).
 
 ## [0.35.0.4] - 2026-06-08 — conda-forge C++ deps + OSQP tunability + Linux libstdc++ preload + CI hardening
 
@@ -108,7 +120,9 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 - Non-benchmark tests fail loud instead of being silently skipped ([a1d7607]).
 - Python 3.9 compatibility for example modules via `from __future__ import annotations` ([87ce68e]).
 
-[Unreleased]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.4...HEAD
+[0.35.0.7]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.6...HEAD
+[0.35.0.6]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.5...0.35.0.6
+[0.35.0.5]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.4...0.35.0.5
 [0.35.0.4]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.3...0.35.0.4
 [0.35.0.3]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.2...0.35.0.3
 [0.35.0.2]: https://github.com/tesseract-robotics/tesseract_nanobind/compare/0.35.0.1...0.35.0.2
@@ -148,6 +162,19 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [#97]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/97
 [#103]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/103
 [#122]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/122
+[#72]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/72
+[#85]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/85
+[#87]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/87
+[#92]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/92
+[#110]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/110
+[#115]: https://github.com/tesseract-robotics/tesseract_nanobind/issues/115
+[#119]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/119
+[#121]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/121
+[#123]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/123
+[#125]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/125
+[#126]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/126
+[#127]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/127
+[#128]: https://github.com/tesseract-robotics/tesseract_nanobind/pull/128
 [07f8f9c]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/07f8f9c8c54ab13c3d10ceca00181091d0126336
 [2c62952]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/2c62952fded6cb1253cb45441d7cd6f9b0423593
 [361c60e]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/361c60e263f0768e1b23d3a9919f700d06b15993
@@ -229,6 +256,9 @@ First PyPI-published macOS arm64 wheels, shipping via a dedicated `wheels-macos.
 [e60f272]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/e60f272
 [ee83dc8]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/ee83dc8
 [f944293]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/f944293
+[e51946f]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/e51946f
+[0f12535]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/0f12535
+[bcac229]: https://github.com/tesseract-robotics/tesseract_nanobind/commit/bcac229
 [@Joelkang]: https://github.com/Joelkang
 [@johnwason]: https://github.com/johnwason
 [@marip8]: https://github.com/marip8
