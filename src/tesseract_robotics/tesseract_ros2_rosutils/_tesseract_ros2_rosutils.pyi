@@ -535,7 +535,7 @@ class Geometry:
 
     CONVEX_MESH: int = 7
 
-    SDF_MESH: int = 8
+    SIGNED_DISTANCE_FIELD: int = 8
 
     OCTREE: int = 9
 

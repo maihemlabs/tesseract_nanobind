@@ -254,7 +254,7 @@ NB_MODULE(_tesseract_ros2_rosutils, m)
   geometry_cls.attr("PLANE") = (uint8_t)tm_msg::Geometry::PLANE;
   geometry_cls.attr("MESH") = (uint8_t)tm_msg::Geometry::MESH;
   geometry_cls.attr("CONVEX_MESH") = (uint8_t)tm_msg::Geometry::CONVEX_MESH;
-  geometry_cls.attr("SDF_MESH") = (uint8_t)tm_msg::Geometry::SDF_MESH;
+  geometry_cls.attr("SIGNED_DISTANCE_FIELD") = (uint8_t)tm_msg::Geometry::SIGNED_DISTANCE_FIELD;
   geometry_cls.attr("OCTREE") = (uint8_t)tm_msg::Geometry::OCTREE;
   geometry_cls.attr("CAPSULE") = (uint8_t)tm_msg::Geometry::CAPSULE;
   geometry_cls.attr("POLYGON_MESH") = (uint8_t)tm_msg::Geometry::POLYGON_MESH;
