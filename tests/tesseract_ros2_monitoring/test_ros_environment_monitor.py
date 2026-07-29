@@ -1,7 +1,8 @@
 """Lifecycle smoke tests for tesseract_ros2_monitoring bindings.
 
 The whole module is skipped when the C++ extension is absent — this
-matches the default (ROS-less) build where `TESSERACT_NANOBIND_BUILD_ROS=OFF`.
+matches a ROS-less build, where CMake auto-detects no ROS 2 and skips
+the tesseract_ros2_* modules.
 """
 
 import os
@@ -12,9 +13,11 @@ pytest.importorskip("tesseract_robotics.tesseract_ros2_monitoring")
 
 from tesseract_robotics import (  # noqa: E402
     tesseract_environment,
-    tesseract_ros2_monitoring as tm_ros2,
     tesseract_srdf,
     tesseract_urdf,
+)
+from tesseract_robotics import (
+    tesseract_ros2_monitoring as tm_ros2,
 )
 
 from ..tesseract_support_resource_locator import TesseractSupportResourceLocator  # noqa: E402

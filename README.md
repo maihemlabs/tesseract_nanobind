@@ -175,36 +175,24 @@ This runs ruff + auto-staging on commit, and pyright + pytest on push (configure
 
 ### Optional ROS 2 bindings
 
-Two ROS submodules are gated behind `-DTESSERACT_NANOBIND_BUILD_ROS=ON` and are **off by default**:
+Two ROS submodules build automatically when a ROS 2 environment is available, and are
+skipped when it isn't — there is no flag to pass:
 
 - `tesseract_ros2_monitoring` — wraps the `tesseract_monitoring` package from [`tesseract_ros2`](https://github.com/tesseract-robotics/tesseract_ros2) (`ROSEnvironmentMonitor`, `CurrentStateMonitor`, `ROSContext`).
 - `tesseract_ros2_rosutils` — wraps a high-leverage subset of `tesseract_rosutils` conversions (`Pose` ↔ `Isometry3d`, `Command` ↔ `EnvironmentCommand`, `JointTrajectory` flavors).
 
-Default wheels remain ROS-free.
-
-To build the ROS 2 bindings locally:
-
-The ROS 2 bindings build in the **py312** pixi env, whose python matches ROS Jazzy's
-(3.12); the `ros` feature adds `colcon` + `ros_industrial_cmake_boilerplate`. Matching
-the interpreter avoids the colcon/rosidl/ament version-skew you'd hit running a sourced
-ROS distro under the default env's newer python.
-
 ```bash
-# Source ROS on top of your shell, then run the ROS tasks in the ros-py312 env. The
-# sourced ROS distro provides rclcpp/msgs + the ament/rosidl python helpers
-# (importable because the env python matches ROS's 3.12).
+sudo apt install python3-colcon-common-extensions   # once
 source /opt/ros/jazzy/setup.bash
-
-# In a ros-py3XX env the `ros` feature overrides `install`/`test` with the ROS variants:
-#   install -> colcon-builds the tesseract_ros2 overlay (msgs/rosutils/monitoring) into
-#              ws/install/ against the conda tesseract C++ (the `build-ros` step), then
-#              editable pip install with -DTESSERACT_NANOBIND_BUILD_ROS=ON.
-#   test    -> runs the ROS 2 binding tests.
-pixi run -e ros-py312 install
-pixi run -e ros-py312 test
+pixi run install                                    # builds the tesseract_ros2 overlay too
+pixi run test-ros
 ```
 
-ROS-less builds automatically skip both submodules' tests via `pytest.importorskip`. Tested against ROS 2 Jazzy.
+The same `install` task everyone else runs, so there's no ROS-specific pixi environment to
+pick. Published wheels stay ROS-free. Tested against ROS 2 Jazzy.
+
+See [ROS 2 Bindings Build](docs/developer/ros.md) for the design — how detection works, why
+the overlay uses the distro's python, and troubleshooting.
 
 ### Building portable wheels
 

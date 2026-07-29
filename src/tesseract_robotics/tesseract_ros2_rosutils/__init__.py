@@ -6,9 +6,9 @@ from the `tesseract_rosutils` package in the tesseract_ros2 repo (ROS 2).
 Module is prefixed `tesseract_ros2_` so a future ROS 1 variant
 (`tesseract_ros_rosutils`) can coexist without a naming collision.
 
-Only available when the repo was built with
-`-DTESSERACT_NANOBIND_BUILD_ROS=ON`; otherwise the underlying `.so`
-is absent and importing this package raises ImportError.
+Only available when the repo was built with a ROS 2 distro sourced (the
+build detects it automatically); otherwise the underlying `.so` is
+absent and importing this package raises ImportError.
 
 Bound msg types are nanobind classes, NOT rclpy classes. To publish to ROS
 or consume rclpy subscriber messages, copy fields between the bound msg

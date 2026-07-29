@@ -4,9 +4,9 @@ Wraps the `tesseract_monitoring` package from the tesseract_ros2 repo
 (ROS 2). Module is prefixed `tesseract_ros2_` so a future ROS 1 variant
 (`tesseract_ros_monitoring`) can coexist without a naming collision.
 
-Only available when the repo was built with
-`-DTESSERACT_NANOBIND_BUILD_ROS=ON`; otherwise the underlying `.so`
-is absent and importing this package raises ImportError.
+Only available when the repo was built with a ROS 2 distro sourced (the
+build detects it automatically); otherwise the underlying `.so` is
+absent and importing this package raises ImportError.
 """
 
 import tesseract_robotics.tesseract_environment  # noqa: F401 - base EnvironmentMonitor lives here

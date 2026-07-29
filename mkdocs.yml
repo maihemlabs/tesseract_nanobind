@@ -180,6 +180,7 @@ nav:
     - Program Emitters: developer/emitters.md
     - SWIG to Nanobind Migration: developer/migration.md
     - TrajOpt-Ifopt Constraints: developer/trajopt_ifopt_missing_constraints.md
+    - ROS 2 Bindings Build: developer/ros.md
     - Windows Wheel Gotchas: developer/windows-wheels.md
     - macOS Wheel Gotchas: developer/macos-wheels.md
     - Linux Wheel Gotchas: developer/linux-wheels.md

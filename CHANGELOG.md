@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- **Opt-in ROS 2 bindings** (`-DTESSERACT_NANOBIND_BUILD_ROS=ON`; default wheels stay ROS-free, built locally in a shell that has sourced `/opt/ros/<distro>/setup.bash`) — two new modules wrapping [`tesseract_ros2`][tesseract_ros2], contributed by [@seonixx]:
+- **ROS 2 bindings** — two new modules wrapping [`tesseract_ros2`][tesseract_ros2], contributed by [@seonixx]. `pixi run install` builds them when a ROS 2 distro is sourced and skips them otherwise; published wheels stay ROS-free. Requires `python3-colcon-common-extensions`. Build design: `docs/developer/ros.md`:
   - **`tesseract_ros2_monitoring`** — wraps `tesseract_monitoring`: the abstract `EnvironmentMonitor` base, the concrete `ROSEnvironmentMonitor`, `CurrentStateMonitor`, `MonitoredEnvironmentMode`, and a `ROSContext` helper that owns `rclcpp::init`/`shutdown` plus a user-facing `rclcpp::Node` spun on a background executor. Prefixed `tesseract_ros2_` so a future `tesseract_ros_monitoring` (ROS 1) can coexist without a breaking rename.
   - **`tesseract_ros2_rosutils`** — wraps the `tesseract_rosutils` conversion helpers: `Pose` ↔ `Eigen::Isometry3d`, `tesseract_msgs::EnvironmentCommand` ↔ `tesseract_environment::Command` (Link/Joint/SceneGraph dispatch), and both `tesseract_msgs::JointTrajectory` and `trajectory_msgs::JointTrajectory` ↔ `tesseract_common::JointTrajectory`. ROS message types are bound as nanobind classes (not `rclpy` classes), so publishing to a topic field-copies between the bound msg and the matching `rclpy` message. Also adds `tesseract_common::JointTrajectory` to the `tesseract_common` module as a prerequisite for the trajectory converters.
 
