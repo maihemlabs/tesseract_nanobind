@@ -7,11 +7,12 @@ collection of conversion helpers between Tesseract types and ROS 2 message
 types.
 
 !!! note "Optional module"
-    This submodule is only built when the repository is configured with
-    `-DTESSERACT_NANOBIND_BUILD_ROS=ON` in a shell that has sourced a ROS 2
-    distro (e.g. `/opt/ros/jazzy/setup.bash`). Default wheels do not include
-    it; `import tesseract_robotics.tesseract_ros2_rosutils` raises
-    `ImportError` on a ROS-less install.
+    This submodule is built automatically when the repository is configured in a
+    shell that has sourced a ROS 2 distro (e.g. `/opt/ros/jazzy/setup.bash`) and
+    the `tesseract_ros2` overlay is present — no CMake flag needed. Default
+    wheels do not include it; `import
+    tesseract_robotics.tesseract_ros2_rosutils` raises `ImportError` on a
+    ROS-less install.
 
 !!! warning "Bound msg types are NOT rclpy types"
     The ROS message classes exposed by this module (`Pose`, `EnvironmentCommand`,

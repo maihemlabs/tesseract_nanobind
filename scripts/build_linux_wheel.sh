@@ -26,11 +26,17 @@ LIB_DIR="$CONDA_PREFIX/lib"
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib"
 export CMAKE_PREFIX_PATH="$CONDA_PREFIX"
 
+# TESSERACT_NANOBIND_BUILD_ROS defaults to AUTO, i.e. CMake builds the tesseract_ros2_*
+# modules whenever a ROS 2 distro and the ws/install overlay are visible. A distributable
+# wheel must never link /opt/ros, so pin it OFF here rather than relying on the caller's
+# shell being ROS-free.
+WHEEL_CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DTESSERACT_NANOBIND_BUILD_ROS=OFF"
+
 if $DEV_MODE; then
     echo "Building dev wheel (no bundling)..."
     rm -rf dist/
     pip install setuptools-scm
-    CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
+    CMAKE_ARGS="$WHEEL_CMAKE_ARGS" \
         pip wheel . -w dist/ --no-build-isolation
     echo ""
     echo "Dev wheel: dist/"
@@ -51,7 +57,7 @@ pip install setuptools-scm
 rm -rf dist/ wheelhouse/
 
 echo "Building wheel..."
-CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
+CMAKE_ARGS="$WHEEL_CMAKE_ARGS" \
     pip wheel . -w dist/ --no-build-isolation
 
 WHEEL_FILE=$(ls dist/tesseract*.whl)

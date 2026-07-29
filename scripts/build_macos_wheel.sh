@@ -34,6 +34,12 @@ LIB_DIR="$CPP_PREFIX/lib"
 export DYLD_LIBRARY_PATH="$CPP_PREFIX/lib"
 export CMAKE_PREFIX_PATH="$CPP_PREFIX"
 
+# TESSERACT_NANOBIND_BUILD_ROS defaults to AUTO, i.e. CMake builds the tesseract_ros2_*
+# modules whenever a ROS 2 distro and the ws/install overlay are visible. A distributable
+# wheel must never link a ROS install, so pin it OFF here rather than relying on the
+# caller's shell being ROS-free.
+export CMAKE_ARGS="-DTESSERACT_NANOBIND_BUILD_ROS=OFF ${CMAKE_ARGS:-}"
+
 if $DEV_MODE; then
     echo "Building dev wheel (no delocate)..."
     rm -rf dist/

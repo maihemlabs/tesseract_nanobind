@@ -35,7 +35,8 @@ MODULES=(
     "tesseract_robotics.tesseract_urdf._tesseract_urdf:tesseract_urdf"
     "tesseract_robotics.trajopt_ifopt._trajopt_ifopt:trajopt_ifopt"
     "tesseract_robotics.trajopt_sqp._trajopt_sqp:trajopt_sqp"
-    # Optional: only present when built with -DTESSERACT_NANOBIND_BUILD_ROS=ON.
+    # Optional: only present when the build auto-detected a ROS 2 environment plus the
+    # tesseract_ros2 overlay (see TESSERACT_NANOBIND_BUILD_ROS in CMakeLists.txt).
     # The loop below silently skips modules that fail to import, so these entries
     # are no-ops on ROS-less builds.
     "tesseract_robotics.tesseract_ros2_monitoring._tesseract_ros2_monitoring:tesseract_ros2_monitoring"

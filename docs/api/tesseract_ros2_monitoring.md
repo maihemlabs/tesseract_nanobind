@@ -5,11 +5,12 @@ Python bindings for the `tesseract_monitoring` package from
 the ROS 2 transport layer for a `tesseract::environment::Environment`.
 
 !!! note "Optional module"
-    This submodule is only built when the repository is configured with
-    `-DTESSERACT_NANOBIND_BUILD_ROS=ON` in a shell that has sourced a ROS 2
-    distro (e.g. `/opt/ros/jazzy/setup.bash`). Default wheels do not include
-    it; `import tesseract_robotics.tesseract_ros2_monitoring` raises
-    `ImportError` on a ROS-less install.
+    This submodule is built automatically when the repository is configured in a
+    shell that has sourced a ROS 2 distro (e.g. `/opt/ros/jazzy/setup.bash`) and
+    the `tesseract_ros2` overlay is present — no CMake flag needed. Default
+    wheels do not include it; `import
+    tesseract_robotics.tesseract_ros2_monitoring` raises `ImportError` on a
+    ROS-less install.
 
 !!! info "Naming convention"
     The module is prefixed `tesseract_ros2_` (not simply `tesseract_monitoring`)

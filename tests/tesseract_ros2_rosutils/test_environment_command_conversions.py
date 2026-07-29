@@ -11,7 +11,11 @@ import pytest
 pytest.importorskip("tesseract_robotics.tesseract_ros2_rosutils")
 
 from tesseract_robotics import tesseract_ros2_rosutils as ru  # noqa: E402
-from tesseract_robotics.tesseract_common import GeneralResourceLocator  # noqa: E402
+from tesseract_robotics.tesseract_common import (  # noqa: E402
+    AllowedCollisionMatrix,
+    GeneralResourceLocator,  # noqa: E402
+    Isometry3d,
+)
 from tesseract_robotics.tesseract_environment import (  # noqa: E402
     AddLinkCommand,
     AddSceneGraphCommand,
@@ -22,10 +26,6 @@ from tesseract_robotics.tesseract_environment import (  # noqa: E402
     MoveJointCommand,
     RemoveJointCommand,
     RemoveLinkCommand,
-)
-from tesseract_robotics.tesseract_common import (  # noqa: E402
-    AllowedCollisionMatrix,
-    Isometry3d,
 )
 from tesseract_robotics.tesseract_scene_graph import (  # noqa: E402
     Joint,
